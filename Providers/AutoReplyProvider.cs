@@ -3,13 +3,13 @@ using Microsoft.Extensions.Options;
 using Voxta.Model.WebsocketMessages.ClientMessages;
 using Voxta.Providers.Host;
 
-namespace Voxta.SampleProviderApp.Providers;
+namespace Voxta.TCode.Providers;
 
 // This example shows how to use auto-reply and read from the appsettings.json
 public class AutoReplyProvider(
     IRemoteChatSession session,
     ILogger<AutoReplyProvider> logger,
-    IOptions<SampleProviderAppOptions> options
+    IOptions<TCodeOptions> options
 )
     : ProviderBase(session, logger)
 {

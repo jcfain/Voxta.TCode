@@ -1,20 +1,22 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Text; 
+using System.IO.Ports;
 using Voxta.Model.Shared;
 using Voxta.Model.WebsocketMessages.ClientMessages;
 using Voxta.Model.WebsocketMessages.ServerMessages;
 using Voxta.Providers.Host;
+using System.Net.Sockets;
 
-namespace Voxta.SampleProviderApp.Providers;
+namespace Voxta.TCode.Providers;
 
 // This example shows how to create and act on character action inference.
 // Note that this is typically not for user commands, another system will be released later
-public class ActionProvider(
-    IRemoteChatSession session,
-    ILogger<ActionProvider> logger
-) : ProviderBase(session, logger)
+public class ActionProvider: ProviderBase
 {
-    SerialPort serial;
-
+    private readonly IOptions<TCodeOptions> options;
+    readonly SerialPort serial;
+    readonly UdpClient udpClient;
     private float targetStrokeSpeed = 0;
     private int targetStrokeTop = 9999;
     private int targetStrokeBottom = 9999;
@@ -27,14 +29,43 @@ public class ActionProvider(
 
     public ActionProvider(
         IRemoteChatSession session,
-        ILogger<ActionProvider> logger)
+        ILogger<ActionProvider> logger,
+        IOptions<TCodeOptions> options)
         : base(session, logger)
     {
-        serial = new SerialPort("COM3", 115200);
-        serial.Open();
-        serial.DtrEnable = true;
-        serial.ReadTimeout = 10;
-        Console.WriteLine("Serial connection started");
+        this.options = options;
+        serial = new SerialPort(options.Value.SerialPort, 115200);
+        udpClient = new UdpClient();
+        if(!options.Value.UseUDP)
+        {
+            serial.Open();
+            serial.DtrEnable = true;
+            serial.ReadTimeout = 10;
+            Console.WriteLine("Serial connection started");
+        } 
+        else
+        {
+            // Open UDP port
+            udpClient.Connect(options.Value.UDPAddress, options.Value.UDPPort);
+            Console.WriteLine("UDP connection started");
+        }
+    }
+
+    private void SendTCode(string tcode)
+    {
+        if(!options.Value.UseUDP)
+        {
+            serial.WriteLine(tcode + "\n");
+        }
+        else
+        {
+            udpClient.BeginSend(Encoding.ASCII.GetBytes(tcode), tcode.Length, UDPCallback, null);
+        }
+    }
+
+    private void UDPCallback(IAsyncResult result) 
+    {
+        Console.WriteLine("UDP callback");
     }
 
     protected override async Task OnStartAsync()
@@ -86,10 +117,13 @@ public class ActionProvider(
                     // Helps the AI understand when and how to use the function
                     Description = "When {{ char }} wants to give intense pleasure to {{ user }} sexually or go really fast.",
                     // This text will be prepended to the AI's response
-                    Effect = "{{ char }} is giving {{ user }} intense sexual stimulation.",
-                    // Optional arguments for your action
-                    Arguments = new[]
+                    Effect = new ActionEffect
                     {
+                        Secret = "{{ char }} is giving {{ user }} intense sexual stimulation."
+                    },
+                    // Optional arguments for your action
+                    Arguments =
+                    [
                         new FunctionArgumentDefinition
                         {
                             // The name sent to the LLM
@@ -101,7 +135,7 @@ public class ActionProvider(
                             // Explanation for the LLM
                             Description = "The intensity of the short strokes. It can be a number 1-10."
                         }
-                    }
+                    ]
                 },
                 new()
                 {
@@ -112,10 +146,13 @@ public class ActionProvider(
                     // Helps the AI understand when and how to use the function
                     Description = "When {{ char }} wants to give gentle pleasure to {{ user }} sexually or go slow.",
                     // This text will be prepended to the AI's response
-                    Effect = "{{ char }} is giving {{ user }} gentle sexual stimulation.",
-                    // Optional arguments for your action
-                    Arguments = new[]
+                    Effect = new ActionEffect
                     {
+                        Secret = "{{ char }} is giving {{ user }} gentle sexual stimulation."
+                    },
+                    // Optional arguments for your action
+                    Arguments =
+                    [
                         new FunctionArgumentDefinition
                         {
                             // The name sent to the LLM
@@ -127,7 +164,7 @@ public class ActionProvider(
                             // Explanation for the LLM
                             Description = "The intensity of the teasing strokes. It can be a number 1-10."
                         }
-                    }
+                    ]
                 },
                 new()
                 {
@@ -138,10 +175,13 @@ public class ActionProvider(
                     // Helps the AI understand when and how to use the function
                     Description = "When {{ char }} wants to tease {{ user }} by denying him stimulation. Or if {{ user }} wants {{ char}} to stop.",
                     // This text will be prepended to the AI's response
-                    Effect = "{{ char }} has stopped stimulating {{ user }}.",
-                    // Optional arguments for your action
-                    Arguments = new[]
+                    Effect = new ActionEffect
                     {
+                        Secret = "{{ char }} has stopped stimulating {{ user }}."
+                    },
+                    // Optional arguments for your action
+                    Arguments =
+                    [
                         new FunctionArgumentDefinition
                         {
                             // The name sent to the LLM
@@ -153,9 +193,9 @@ public class ActionProvider(
                             // Explanation for the LLM
                             Description = "The strength of the denial. It can be a number 1-10."
                         }
-                    }
-                },
-            }
+                    ]
+                }
+            ]
         });
 
         // Act when an action is called
@@ -233,7 +273,7 @@ public class ActionProvider(
             float floatPos = (strokeTop + strokeBottom + (strokeTop - strokeBottom) * Convert.ToSingle(Math.Cos(strokeTimer))) / 2;
             int pos = Convert.ToInt32(floatPos + 0.5f);
 
-            serial.WriteLine(GetTCode("L0", pos) + "\n");
+            SendTCode(GetTCode("L0", pos));
             await Task.Delay(10);
         }
     }

@@ -3,8 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Voxta.Client;
 using Voxta.Providers.Host;
-using Voxta.SampleProviderApp;
-using Voxta.SampleProviderApp.Providers;
+using Voxta.TCode;
+using Voxta.TCode.Providers;
 
 // Dependency Injection
 var services = new ServiceCollection();
@@ -18,8 +18,8 @@ services.AddSingleton<IConfiguration>(configuration);
 services.AddOptions<VoxtaClientOptions>()
     .Bind(configuration.GetSection("Voxta.Client"))
     .ValidateDataAnnotations();
-services.AddOptions<SampleProviderAppOptions>()
-    .Bind(configuration.GetSection("SampleProviderApp"))
+services.AddOptions<TCodeOptions>()
+    .Bind(configuration.GetSection("VoxtaTcode"))
     .ValidateDataAnnotations();
 
 // Logging
