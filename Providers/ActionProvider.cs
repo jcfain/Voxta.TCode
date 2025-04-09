@@ -34,20 +34,43 @@ public class ActionProvider: ProviderBase
         : base(session, logger)
     {
         this.options = options;
-        serial = new SerialPort(options.Value.SerialPort, 115200);
+        serial = new SerialPort();
         udpClient = new UdpClient();
         if(!options.Value.UseUDP)
         {
-            serial.Open();
-            serial.DtrEnable = true;
-            serial.ReadTimeout = 10;
-            Logger.LogInformation("Serial connection started on port: {port}", options.Value.SerialPort);
+            try
+            {
+                if(!SerialPort.GetPortNames().Contains(options.Value.SerialPort))
+                {
+                    Logger.LogError("Serial port not found: {port}", options.Value.SerialPort);
+                    return;
+                }
+                serial.PortName = options.Value.SerialPort;
+                serial.BaudRate = 115200;
+                serial.Open();
+                serial.DtrEnable = true;
+                serial.ReadTimeout = 10;
+                Logger.LogInformation("Serial connection started on port: {port}", options.Value.SerialPort);
+            }
+            catch(Exception e)
+            {
+                Logger.LogError("Serial connection FAILED port: {port}", options.Value.SerialPort);
+                Logger.LogError("Reason: {reason}", e.Message);
+            }
         } 
         else
         {
             // Open UDP port
-            udpClient.Connect(options.Value.UDPAddress, options.Value.UDPPort);
-            Logger.LogInformation("UDP connection started {address}:{port}", options.Value.UDPAddress, options.Value.UDPPort);
+            try
+            {
+                udpClient.Connect(options.Value.UDPAddress, options.Value.UDPPort);
+                Logger.LogInformation("UDP connection started {address}:{port}", options.Value.UDPAddress, options.Value.UDPPort);
+            }
+            catch(Exception e)
+            {
+                Logger.LogError("UDP connection FAILED {address}:{port}", options.Value.UDPAddress, options.Value.UDPPort);
+                Logger.LogError("Reason: {reason}", e.Message);
+            }
         }
     }
 
@@ -60,7 +83,7 @@ public class ActionProvider: ProviderBase
         else
         {
             // udpClient.BeginSend(Encoding.ASCII.GetBytes(tcode), tcode.Length, UDPCallback, null);
-            udpClient.Send(Encoding.ASCII.GetBytes(tcode), tcode.Length);
+            udpClient.Send(Encoding.ASCII.GetBytes(tcode +"\n"), tcode.Length +1);
         }
     }
 
