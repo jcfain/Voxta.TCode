@@ -252,9 +252,9 @@ public class ActionProvider: ProviderBase
         while (true)
         {
 
-            strokeSpeed = converge(strokeSpeed, targetStrokeSpeed, 0.05f);
-            strokeTop = converge(strokeTop, targetStrokeTop, 20f);
-            strokeBottom = converge(strokeBottom, targetStrokeBottom, 20f);
+            strokeSpeed = Converge(strokeSpeed, targetStrokeSpeed, 0.05f);
+            strokeTop = Converge(strokeTop, targetStrokeTop, 20f);
+            strokeBottom = Converge(strokeBottom, targetStrokeBottom, 20f);
 
             strokeTimer += strokeSpeed * 1.2f * 0.0094248f; // ie speed of 20 = 3 strokes per second
             if (strokeTimer > 6.2831853f)
@@ -278,7 +278,7 @@ public class ActionProvider: ProviderBase
         }
     }
 
-    float converge(float input, float target, float rate)
+    private float Converge(float input, float target, float rate)
     {
         float output;
         if (input >= target)
@@ -294,7 +294,7 @@ public class ActionProvider: ProviderBase
         return output;
     }
 
-    string GetTCode(string axis, int value)
+    private string GetTCode(string axis, int value)
     {
         value = Math.Clamp(value, 0, 9999);
         string output;
