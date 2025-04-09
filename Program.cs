@@ -19,7 +19,7 @@ services.AddOptions<VoxtaClientOptions>()
     .Bind(configuration.GetSection("Voxta.Client"))
     .ValidateDataAnnotations();
 services.AddOptions<TCodeOptions>()
-    .Bind(configuration.GetSection("VoxtaTcode"))
+    .Bind(configuration.GetSection("Voxta.TCode"))
     .ValidateDataAnnotations();
 
 // Logging
