@@ -41,13 +41,13 @@ public class ActionProvider: ProviderBase
             serial.Open();
             serial.DtrEnable = true;
             serial.ReadTimeout = 10;
-            Console.WriteLine("Serial connection started");
+            Logger.LogInformation("Serial connection started on port: {port}", options.Value.SerialPort);
         } 
         else
         {
             // Open UDP port
             udpClient.Connect(options.Value.UDPAddress, options.Value.UDPPort);
-            Console.WriteLine("UDP connection started");
+            Logger.LogInformation("UDP connection started {address}:{port}", options.Value.UDPAddress, options.Value.UDPPort);
         }
     }
 
@@ -59,13 +59,14 @@ public class ActionProvider: ProviderBase
         }
         else
         {
-            udpClient.BeginSend(Encoding.ASCII.GetBytes(tcode), tcode.Length, UDPCallback, null);
+            // udpClient.BeginSend(Encoding.ASCII.GetBytes(tcode), tcode.Length, UDPCallback, null);
+            udpClient.Send(Encoding.ASCII.GetBytes(tcode), tcode.Length);
         }
     }
 
     private void UDPCallback(IAsyncResult result) 
     {
-        Console.WriteLine("UDP callback");
+        // Console.WriteLine("UDP callback");
     }
 
     protected override async Task OnStartAsync()
