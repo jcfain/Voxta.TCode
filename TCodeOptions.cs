@@ -15,4 +15,8 @@ public class TCodeOptions
     public required int UDPPort { get; init; }
     [Required]
     public required int AutoReplyDelay { get; init; }
+    [Required]
+    public required int StrokeMin { get; init; }
+    [Required]
+    public required int StrokeMax { get; init; }
 }
