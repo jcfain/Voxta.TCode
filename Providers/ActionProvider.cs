@@ -112,31 +112,31 @@ public class ActionProvider: ProviderBase
             {
                 arguments.Add(new FunctionArgumentDefinition
                 {
-                    Name = channel.Name + "Intensity",
+                    Name = channel.IntensityName,
                     Type = FunctionArgumentType.Integer,
                     Required = true,
-                    Description = channel.PositionDescription.Length != 0 ? channel.PositionDescription : string.Format(ChannelDefault.DefaultIntensityDescription, channel.FullName, channel.)
+                    Description = channel.PositionDescription
                 });
                 continue;
             }
 
             arguments.Add(new FunctionArgumentDefinition
             {
-                Name = channel.Name + "Range",
+                Name = channel.RangeName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
                 Description = channel.RangeDescription.Length != 0 ? channel.RangeDescription : string.Format("The range of the {0}. It can be a number 10-100.", channel.FullName)
             });
             arguments.Add(new FunctionArgumentDefinition
             {
-                Name = channel.Name + "Position",
+                Name = channel.PositionName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
                 Description = channel.PositionDescription.Length != 0 ? channel.PositionDescription : string.Format("The position of the {0} range. It can be a number 10-90.", channel.FullName)
             });
             arguments.Add(new FunctionArgumentDefinition
             {
-                Name = channel.Name + "Speed",
+                Name = channel.IntensityName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
                 Description = channel.SpeedDescription.Length != 0 ? channel.SpeedDescription : string.Format("The intensity of the {0}. It can be a number 1-10.", channel.FullName)

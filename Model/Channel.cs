@@ -35,68 +35,98 @@ namespace Voxta.TCode.Model
 
     public class ChannelDefault
     {
-        public static readonly string DefaultIntensityDescription = "The intensity of the {0}. It can be a number {1}-{2}.";
-        public static readonly string DefaultRangeDescription = "The range of the {0}. It can be a number {0}-{1}.";
-        public static readonly string DefaultPositionDescription = "The position of the {0} range. It can be a number {0}-{1}.";
-        public static readonly string DefaultSpeedDescription = "The intensity of the {0}. It can be a number {0}-{1}.";
-        public static readonly Channel Stroke = new{Name = ChannelName.Stroke, FullName = "stroke", 
-                            IntensityPercentage = Tuple.Create(1, 10),
-                            RangePercentage = Tuple.Create(30, 100),
-                            Tuple.Create(10, 100), 
-                            "The intensity of the {0}. It can be a number {1}-{2}.",
-                            "The range of the {0}. It can be a number {1}-{2}.", 
-                            "The position of the {0} range. Where 90 is the head or tip of the cock, 10 is the base of the cock and 50 is the middle of the cock. It can be a number {1}-{2}.");
-        public static readonly Channel Surge = new(ChannelName.Surge, "surge",
-                            Tuple.Create(1, 10),
-                            Tuple.Create(1, 100),
-                            Tuple.Create(10, 100));
-        public static readonly Channel Sway = new(ChannelName.Sway, "sway",
-                            Tuple.Create(1, 10),
-                            Tuple.Create(1, 100),
-                            Tuple.Create(10, 100));
-        public static readonly Channel Twist = new(ChannelName.Twist, "twisting",
-                            Tuple.Create(1, 10),
-                            Tuple.Create(1, 100),
-                            Tuple.Create(10, 100));
-        public static readonly Channel Roll = new(ChannelName.Roll, "roll",
-                            Tuple.Create(1, 10),
-                            Tuple.Create(1, 100),
-                            Tuple.Create(10, 100));
-        public static readonly Channel Pitch = new(ChannelName.Roll, "pitch",
-                            Tuple.Create(1, 10),
-                            Tuple.Create(1, 100),
-                            Tuple.Create(10, 100));
-        public static readonly Channel Suck = new(ChannelName.SuckLevel, "suck",
-                            Tuple.Create(0, 0),
-                            Tuple.Create(0, 100),
-                            Tuple.Create(0, 0), 
-                            "", 
-                            "How much suction to generate. It can be a number {1}-{2}.", 
-                            "");
-        public static readonly Channel Lube = new(ChannelName.Lube, "lube",
-                            Tuple.Create(0, 0),
-                            Tuple.Create(0, 100),
-                            Tuple.Create(0, 0), 
-                            "", 
-                            "How much lube to coat the cock with. It can be a number {1}-{2}.", 
-                            "",
-                            true);
-        public static readonly Channel Vibe1 = new(ChannelName.Vibe1, "vibrator number 1",
-                            Tuple.Create(0, 0),
-                            Tuple.Create(0, 100),
-                            Tuple.Create(0, 0), 
-                            "The intensity of the first vibrator. It can be a number {1}-{2}.", 
-                            "", 
-                            "",
-                            true);
-        public static readonly Channel Vibe2 = new(ChannelName.Vibe2, "vibrator number 2",
-                            Tuple.Create(0, 0),
-                            Tuple.Create(0, 100),
-                            Tuple.Create(0, 0), 
-                            "The intensity of the second vibrator. It can be a number {1}-{2}.", 
-                            "", 
-                            "",
-                            true);
+        public static readonly string IntensityDescription = "The intensity of the {0}. It can be a number {1}-{2}.";
+        public static readonly string RangeDescription = "The range of the {0}. It can be a number {1}-{2}.";
+        public static readonly string PositionDescription = "The position of the {0} range. It can be a number {1}-{2}.";
+        public static readonly string SpeedDescription = "The intensity of the {0}. It can be a number {1}-{2}.";
+        public static readonly string IntensityName = "{0}Intensity";
+        public static readonly string RangeName = "{0}Range";
+        public static readonly string PositionName= "{0}Position";
+        public static readonly string SpeedName = "{0}Speed";
+        public static readonly Channel Stroke = new()
+        {
+            Name = ChannelName.Stroke, 
+            FullName = "stroke", 
+            IntensityPercentage = Tuple.Create(1, 10),
+            RangePercentage = Tuple.Create(30, 100),
+            PositionPercentage = Tuple.Create(10, 100), 
+            IntensityDescription = "The intensity of the {0}. It can be a number {1}-{2}.",
+            RangeDescription = "The range of the {0}. It can be a number {1}-{2}.", 
+            PositionDescription = "The position of the {0} range. Where 90 is the head or tip of the cock, 10 is the base of the cock and 50 is the middle of the cock. It can be a number {1}-{2}."
+        };
+        public static readonly Channel Surge = new()
+        {
+            Name = ChannelName.Surge, 
+            FullName = "surge",
+            IntensityPercentage = Tuple.Create(1, 10),
+            PositionPercentage = Tuple.Create(1, 100),
+            RangePercentage = Tuple.Create(10, 100)
+        };
+        public static readonly Channel Sway = new()
+        {
+            Name = ChannelName.Sway, 
+            FullName = "sway",
+            IntensityPercentage = Tuple.Create(1, 10),
+            PositionPercentage = Tuple.Create(1, 100),
+            RangePercentage = Tuple.Create(10, 100)
+        };
+        public static readonly Channel Twist = new()
+        {
+            Name = ChannelName.Twist, 
+            FullName = "twisting",
+            IntensityPercentage = Tuple.Create(1, 10),
+            PositionPercentage = Tuple.Create(1, 100),
+            RangePercentage = Tuple.Create(10, 100)
+        };
+        public static readonly Channel Roll = new()
+        {
+            Name = ChannelName.Roll, 
+            FullName = "roll",
+            IntensityPercentage = Tuple.Create(1, 10),
+            PositionPercentage = Tuple.Create(1, 100),
+            RangePercentage = Tuple.Create(10, 100)
+        };
+        public static readonly Channel Pitch = new()
+        {
+            Name = ChannelName.Roll, 
+            FullName = "pitch",
+            IntensityPercentage = Tuple.Create(1, 10),
+            PositionPercentage = Tuple.Create(1, 100),
+            RangePercentage = Tuple.Create(10, 100)
+        };
+        public static readonly Channel Suck = new()
+        {
+            Name = ChannelName.SuckLevel, 
+            FullName = "suck",
+            IntensityPercentage = Tuple.Create(0, 0),
+            PositionPercentage =  Tuple.Create(0, 100),
+            RangePercentage = Tuple.Create(0, 0), 
+            IntensityDescription = "How much suction to generate. It can be a number {1}-{2}.", 
+        };        
+        public static readonly Channel Lube = new()
+        {
+            Name = ChannelName.Lube, 
+            FullName = "lube",
+            IntensityPercentage = Tuple.Create(0, 0),
+            IntensityDescription = "How much lube to coat the cock with. It can be a number {1}-{2}.", 
+            IsSwitch = true
+        };
+        public static readonly Channel Vibe1 = new()
+        {
+            Name = ChannelName.Vibe1, 
+            FullName = "vibrator number 1",
+            IntensityPercentage = Tuple.Create(0, 100),
+            IntensityDescription = "The intensity of the first vibrator. It can be a number {1}-{2}.", 
+            IsSwitch = true
+        };
+        public static readonly Channel Vibe2 = new()
+        {
+            Name = ChannelName.Vibe2, 
+            FullName = "vibrator number 2",
+            IntensityPercentage = Tuple.Create(0, 100),
+            IntensityDescription = "The intensity of the second vibrator. It can be a number {1}-{2}.", 
+            IsSwitch = true
+        };
     }
     public class ChannelName
     {
@@ -138,17 +168,19 @@ namespace Voxta.TCode.Model
     }
     public class Channel
     {
-        public string Name {get;set;}
-        public string FullName {get;set;}
-        public Tuple<int, int> RangePercentage {get;set;}
-        public Tuple<int, int> PositionPercentage {get;set;}
-        public Tuple<int, int> IntensityPercentage {get;set;}
-        public bool IsSwitch {get;set;}
+        public required string Name {get;set;}
+        public required string FullName {get;set;}
+        public Tuple<int, int>? RangePercentage {get;set;}
+        public Tuple<int, int>? PositionPercentage {get;set;}
+        public Tuple<int, int>? IntensityPercentage {get;set;}
+        public string RangeName {get { return string.Format(ChannelDefault.RangeName, FullName); }}
+        public string  PositionName {get { return string.Format(ChannelDefault.PositionName, FullName); }}
+        public string  IntensityName {get { return string.Format(ChannelDefault.IntensityName, FullName); }}
         public string RangeDescription 
         { 
             get
             {
-                return string.Format(m_rangeDescription.Length > 0 ? m_rangeDescription : ChannelDefault.DefaultRangeDescription, FullName, RangePercentage.Item1, RangePercentage.Item2);
+                return string.Format(m_rangeDescription.Length > 0 ? m_rangeDescription : ChannelDefault.RangeDescription, FullName, RangePercentage?.Item1 ?? 0, RangePercentage?.Item2 ?? 100);
             }
             set { m_rangeDescription = value; }
         }
@@ -156,7 +188,7 @@ namespace Voxta.TCode.Model
         {
             get
             {
-                return string.Format(m_positionDescription.Length > 0 ? m_positionDescription : ChannelDefault.DefaultPositionDescription, FullName, PositionPercentage.Item1, PositionPercentage.Item2);
+                return string.Format(m_positionDescription.Length > 0 ? m_positionDescription : ChannelDefault.PositionDescription, FullName, PositionPercentage?.Item1 ?? 0, PositionPercentage?.Item2 ?? 100);
             }
             set { m_positionDescription = value; }
         }
@@ -164,10 +196,11 @@ namespace Voxta.TCode.Model
         {
             get
             {
-                return string.Format(m_intensityDescription.Length > 0 ? m_intensityDescription : ChannelDefault.DefaultSpeedDescription, FullName, IntensityPercentage.Item1, IntensityPercentage.Item2);
+                return string.Format(m_intensityDescription.Length > 0 ? m_intensityDescription : ChannelDefault.SpeedDescription, FullName, IntensityPercentage?.Item1 ?? 0, IntensityPercentage?.Item2 ?? 100);
             }
             set { m_intensityDescription = value; }
         }
+        public bool IsSwitch = false;
         public bool Enabled = true;
         public ChannelTarget Target = new();
         public float Speed = 0;
