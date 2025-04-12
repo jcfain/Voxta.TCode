@@ -129,7 +129,7 @@ public class ActionProvider: ProviderBase
             });
             arguments.Add(new FunctionArgumentDefinition
             {
-                Name = channel.Name + "Positon",
+                Name = channel.Name + "Position",
                 Type = FunctionArgumentType.Integer,
                 Required = true,
                 Description = channel.PositionDescription.Length != 0 ? channel.PositionDescription : string.Format("The position of the {0} range. It can be a number 10-90.", channel.FullName)
@@ -204,46 +204,6 @@ public class ActionProvider: ProviderBase
                         HandleChannelUpdates(message);
                         break;
 
-                    // case "long_range":
-                    //     channel.Target.Mode = "long_range";
-                    //     channel.Target.Top = channel.Max;
-                    //     channel.Target.Bottom = channel.Min;
-                    //     Logger.LogInformation("Long strokes, speed: {speed}", speed);
-                    //     channel.Target.Speed = speed;
-                    //     break;
-
-                    // case "min_half":
-                    //     channel.Target.Mode = "min_half";
-                    //     channel.Target.Top = (channel.Max - channel.Min) / 2;
-                    //     channel.Target.Bottom = channel.Min;
-                    //     Logger.LogInformation("Min half, speed {speed}", speed);
-                    //     channel.Target.Speed = 5f + 1.5f * speed;
-                    //     break;
-
-                    // case "max_half":
-                    //     channel.Target.Mode = "max_half";
-                    //     channel.Target.Top = channel.Max;
-                    //     channel.Target.Bottom = (channel.Max - channel.Min) / 2;
-                    //     Logger.LogInformation("Max half, speed {speed}", speed);
-                    //     channel.Target.Speed = 5f + 1.5f * speed;
-                    //     break;
-
-                    // case "max_thirty_percent":
-                    //     channel.Target.Mode = "max_thirty_percent";
-                    //     channel.Target.Top = channel.Max;
-                    //     channel.Target.Bottom = channel.Max - (int)Math.Round(channel.Max * 0.30, 0);
-                    //     Logger.LogInformation("Max thirty percent, speed: {speed}", speed);
-                    //     channel.Target.Speed = 0.6f * speed;
-                    //     break;
-
-                    // case "slow_long_range":
-                    //     channel.Target.Mode = "slow";
-                    //     channel.Target.Top = channel.Max;
-                    //     channel.Target.Bottom = channel.Min;
-                    //     Logger.LogInformation("Slow, Speed: {speed}", speed);
-                    //     channel.Target.Speed = speed;
-                    //     break;
-
                     default:
                         foreach(var channelKV in device.ChannelsMap)
                         {
@@ -288,9 +248,6 @@ public class ActionProvider: ProviderBase
                 }
                 continue;
             }
-            // channel.Value.Name + "Range"
-            //  channel.Value.Name + "Positon"
-            //  channel.Value.Name + "Speed"
             Logger.LogInformation("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
             Logger.LogInformation("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
 /*             var min = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMin")?.Value ?? "undefined";
