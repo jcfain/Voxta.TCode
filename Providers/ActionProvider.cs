@@ -115,7 +115,7 @@ public class ActionProvider: ProviderBase
                     Name = channel.Name + "Intensity",
                     Type = FunctionArgumentType.Integer,
                     Required = true,
-                    Description = channel.PositionDescription.Length != 0 ? channel.PositionDescription : string.Format("The intensity of the {0}. It can be a number 0-99.", channel.FullName)
+                    Description = channel.PositionDescription.Length != 0 ? channel.PositionDescription : string.Format(ChannelDefault.DefaultIntensityDescription, channel.FullName, channel.)
                 });
                 continue;
             }
@@ -244,7 +244,7 @@ public class ActionProvider: ProviderBase
                 else
                 {
                     intensity = Math.Clamp(intensity, 0, 99);
-                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(intensity, 0, 99, channel.Min, channel.Max)));
+                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(intensity, 0, 100, channel.Min, channel.Max)));
                 }
                 continue;
             }
