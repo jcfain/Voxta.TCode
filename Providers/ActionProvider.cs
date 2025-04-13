@@ -112,7 +112,7 @@ public class ActionProvider: ProviderBase
             {
                 arguments.Add(new FunctionArgumentDefinition
                 {
-                    Name = channel.IntensityName,
+                    Name = channel.PositionName,
                     Type = FunctionArgumentType.Integer,
                     Required = true,
                     Description = channel.PositionDescription
@@ -125,21 +125,21 @@ public class ActionProvider: ProviderBase
                 Name = channel.RangeName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
-                Description = channel.RangeDescription.Length != 0 ? channel.RangeDescription : string.Format("The range of the {0}. It can be a number 10-100.", channel.FullName)
+                Description = channel.RangeDescription
             });
             arguments.Add(new FunctionArgumentDefinition
             {
                 Name = channel.PositionName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
-                Description = channel.PositionDescription.Length != 0 ? channel.PositionDescription : string.Format("The position of the {0} range. It can be a number 10-90.", channel.FullName)
+                Description = channel.PositionDescription
             });
             arguments.Add(new FunctionArgumentDefinition
             {
                 Name = channel.IntensityName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
-                Description = channel.SpeedDescription.Length != 0 ? channel.SpeedDescription : string.Format("The intensity of the {0}. It can be a number 1-10.", channel.FullName)
+                Description = channel.IntensityDescription
             });
         }
 
@@ -235,7 +235,7 @@ public class ActionProvider: ProviderBase
                 continue;
             if(channel.IsSwitch)
             {
-                var intensityString = message.Arguments?.FirstOrDefault(a => a.Name == channel.Name +"Intensity")?.Value ?? "undefined";
+                var intensityString = message.Arguments?.FirstOrDefault(a => a.Name == channel.IntensityName)?.Value ?? "undefined";
                 int intensity = 0;
                 if(!int.TryParse(intensityString, out intensity))
                 {
@@ -243,8 +243,8 @@ public class ActionProvider: ProviderBase
                 }
                 else
                 {
-                    intensity = Math.Clamp(intensity, 0, 99);
-                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(intensity, 0, 100, channel.Min, channel.Max)));
+                    intensity = Math.Clamp(intensity, channel.IntensityPercentage?.Item1 ?? 0, channel.IntensityPercentage?.Item2 ?? 100);
+                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(intensity, channel.IntensityPercentage?.Item1 ?? 0, channel.IntensityPercentage?.Item2 ?? 100, channel.Min, channel.Max)));
                 }
                 continue;
             }
@@ -252,46 +252,49 @@ public class ActionProvider: ProviderBase
             Logger.LogInformation("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
 /*             var min = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMin")?.Value ?? "undefined";
             var max = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMax")?.Value ?? "undefined"; */
-            var rangeString = message.Arguments?.FirstOrDefault(a => a.Name == channel.Name +"Range")?.Value ?? "undefined";
-            var positionString = message.Arguments?.FirstOrDefault(a => a.Name == channel.Name +"Position")?.Value ?? "undefined";
+            var rangeString = message.Arguments?.FirstOrDefault(a => a.Name == channel.RangeName)?.Value ?? "undefined";
+            var positionString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value ?? "undefined";
             Logger.LogInformation("[HandleMessage] {name} rangeString: {min}", channel.FullName, rangeString);
             Logger.LogInformation("[HandleMessage] {name} positionString: {max}", channel.FullName,  positionString);
-            var min = 0;
-            var max = 9999;
-            int range = 0;
+            var min = ChannelDefault.TCodeMin;
+            var max = ChannelDefault.TCodeMax;
+            var range = 0;
             if(!int.TryParse(rangeString, out range))
             {
                 Logger.LogError("[HandleMessage] {name} Invalid range: {range}", channel.FullName,  rangeString);
             }
             else
             {
-                int position = 5;
+                var position = 5;
                 if(!int.TryParse(positionString, out position))
                 {
                     Logger.LogError("[HandleMessage] {name} Invalid position: {position}", channel.FullName,  positionString);
                 } 
                 else
                 {
-                    if(range == position)
-                    {
-
-                    }
-                    //var mid = rangeTotal * (rangePercentage/2);
-                    var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), 0, 9999);
-                    Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
-                    var rangePercentage = range/100f;
-                    Logger.LogInformation("[HandleMessage] {name} rangePercentage: {value}", channel.FullName,  rangePercentage);
-                    var positionPercentage = position/100f;
-                    Logger.LogInformation("[HandleMessage] {name} positionPercentage: {value}", channel.FullName,  positionPercentage);
-                    var rangeLevel = (int)(rangeTotal * positionPercentage);
-                    Logger.LogInformation("[HandleMessage] {name} rangeLevel: {value}", channel.FullName,  rangeLevel);
-                    var rangeTCodeMiddle = (int)(rangeTotal * rangePercentage)/2;
-                    Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
-                    max = Math.Clamp(rangeLevel + rangeTCodeMiddle, channel.Min, channel.Max);
-                    min = Math.Clamp(rangeLevel - rangeTCodeMiddle, channel.Min, channel.Max);
+                    // if(range == channel.RangePercentage?.Item2)
+                    // {
+                    //     max = channel.Max;
+                    //     min = channel.Min;
+                    // } 
+                    // else
+                    // {
+                        var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
+                        Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
+                        var rangePercentage = range/100f;
+                        Logger.LogInformation("[HandleMessage] {name} rangePercentage: {value}", channel.FullName,  rangePercentage);
+                        var positionPercentage = position/100f;
+                        Logger.LogInformation("[HandleMessage] {name} positionPercentage: {value}", channel.FullName,  positionPercentage);
+                        var offset = MathExtension.Map((int)(rangeTotal * positionPercentage), 0, rangeTotal, channel.Min, channel.Max);
+                        Logger.LogInformation("[HandleMessage] {name} offset: {value}", channel.FullName,  offset);
+                        var rangeTCodeMiddle = (int)(rangeTotal * rangePercentage)/2;
+                        Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
+                        max = Math.Clamp(offset + rangeTCodeMiddle, channel.Min, channel.Max);
+                        min = Math.Clamp(offset - rangeTCodeMiddle, channel.Min, channel.Max);
+                    // }
                 }
             }
-            var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.Name +"Speed")?.Value ?? "undefined";
+            var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.IntensityName)?.Value ?? "undefined";
             var speed = 5f;
             if (!float.TryParse(speedString, out speed)) 
             {
@@ -299,14 +302,14 @@ public class ActionProvider: ProviderBase
             } 
             else
             {
-                speed = Math.Clamp(speed, 1f, 10f);
+                speed = Math.Clamp(speed, channel.IntensityPercentage?.Item1 ?? 0, channel.IntensityPercentage?.Item2 ?? 10);
             }
 
             channel.Target.Mode = "stroke";
             channel.Target.Top = max;
             channel.Target.Bottom = min;
             channel.Target.Speed = speed;
-            Logger.LogInformation("{name}, Top: {top}, Bottom: {bottom}, speed: {speed}", channel.FullName,  max, min, speed);
+            Logger.LogInformation("{name} Top: {top}, Bottom: {bottom}, speed: {speed}", channel.FullName,  max, min, speed);
         }
     }
 
