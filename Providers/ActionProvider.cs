@@ -21,8 +21,7 @@ public class ActionProvider: ProviderBase
     readonly UdpClient udpClient;
 
     private readonly Device device;
-
-
+    private readonly Task? strokingTask;
     public ActionProvider(
         IRemoteChatSession session,
         ILogger<ActionProvider> logger,
@@ -35,6 +34,17 @@ public class ActionProvider: ProviderBase
         device = new Device(options.Value.DeviceType);
         UpdateSettings();
         SetupConnection();
+
+        if(serial.IsOpen) 
+        {
+            ChannelDefault.UseStreaming = true;
+            strokingTask = UpdateTCodeStream();
+        }
+        else if(udpClient.Client.Connected)
+        {
+            ChannelDefault.UseStreaming = false;
+            strokingTask = UpdateTCode();
+        }
     }
 
     private void SetupConnection()
@@ -75,7 +85,6 @@ public class ActionProvider: ProviderBase
                 Logger.LogError("Reason: {reason}", e.Message);
             }
         }
-
     }
 
     private void SendTCode(string tcode)
@@ -108,6 +117,13 @@ public class ActionProvider: ProviderBase
             var channel = channelKV.Value;
             if(!channel.Enabled)
                 continue;
+                
+            if(!ChannelDefault.UseStreaming)
+            {
+                channel.SpeedPercentage = Tuple.Create(100, 6000);
+                channel.Target.Speed = 1000;
+            }
+
             if(channel.IsSwitch)
             {
                 arguments.Add(new FunctionArgumentDefinition
@@ -136,10 +152,10 @@ public class ActionProvider: ProviderBase
             });
             arguments.Add(new FunctionArgumentDefinition
             {
-                Name = channel.IntensityName,
+                Name = channel.SpeedName,
                 Type = FunctionArgumentType.Integer,
                 Required = true,
-                Description = channel.IntensityDescription
+                Description = channel.SpeedDescription
             });
         }
 
@@ -220,8 +236,6 @@ public class ActionProvider: ProviderBase
                         break;
                 }
         });
-
-        Task strokingTask = UpdateTCode();
     }
 
     private void HandleChannelUpdates(ServerActionMessage message)
@@ -235,16 +249,16 @@ public class ActionProvider: ProviderBase
                 continue;
             if(channel.IsSwitch)
             {
-                var intensityString = message.Arguments?.FirstOrDefault(a => a.Name == channel.IntensityName)?.Value ?? "undefined";
-                int intensity = 0;
-                if(!int.TryParse(intensityString, out intensity))
+                var positionSwitchString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value ?? "undefined";
+                int position = 0;
+                if(!int.TryParse(positionSwitchString, out position))
                 {
-                    Logger.LogError("[HandleMessage] Invalid switched intensity: {value}", intensityString);
+                    Logger.LogError("[HandleMessage] Invalid switched intensity: {value}", positionSwitchString);
                 }
                 else
                 {
-                    intensity = Math.Clamp(intensity, channel.IntensityPercentage?.Item1 ?? 0, channel.IntensityPercentage?.Item2 ?? 100);
-                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(intensity, channel.IntensityPercentage?.Item1 ?? 0, channel.IntensityPercentage?.Item2 ?? 100, channel.Min, channel.Max)));
+                    position = Math.Clamp(position, channel.PositionPercentage?.Item1 ?? 0, channel.PositionPercentage?.Item2 ?? 100);
+                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(position, channel.PositionPercentage?.Item1 ?? 0, channel.PositionPercentage?.Item2 ?? 100, channel.Min, channel.Max)));
                 }
                 continue;
             }
@@ -272,13 +286,16 @@ public class ActionProvider: ProviderBase
                 } 
                 else
                 {
-                    // if(range == channel.RangePercentage?.Item2)
-                    // {
-                    //     max = channel.Max;
-                    //     min = channel.Min;
-                    // } 
-                    // else
-                    // {
+                    if(range == 0)
+                    {
+                        var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
+                        var rangeMiddle = rangeTotal/2;
+                        var middleOffset = MathExtension.Map(rangeMiddle, 0, rangeTotal, channel.Min, channel.Max);
+                        max = middleOffset;
+                        min = middleOffset;
+                    } 
+                    else
+                    {
                         var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
                         Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
                         var rangePercentage = range/100f;
@@ -291,10 +308,10 @@ public class ActionProvider: ProviderBase
                         Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
                         max = Math.Clamp(offset + rangeTCodeMiddle, channel.Min, channel.Max);
                         min = Math.Clamp(offset - rangeTCodeMiddle, channel.Min, channel.Max);
-                    // }
+                    }
                 }
             }
-            var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.IntensityName)?.Value ?? "undefined";
+            var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.SpeedName)?.Value ?? "undefined";
             var speed = 5f;
             if (!float.TryParse(speedString, out speed)) 
             {
@@ -302,7 +319,7 @@ public class ActionProvider: ProviderBase
             } 
             else
             {
-                speed = Math.Clamp(speed, channel.IntensityPercentage?.Item1 ?? 0, channel.IntensityPercentage?.Item2 ?? 10);
+                speed = Math.Clamp(speed, channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 10);
             }
 
             channel.Target.Mode = "stroke";
@@ -314,6 +331,42 @@ public class ActionProvider: ProviderBase
     }
 
     private async Task UpdateTCode()
+    {
+        StringBuilder tcode = new();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        int counter = 0;
+        int period = 10;
+        while (true)
+        {
+            counter += period;
+            foreach(var channelKV in device.ChannelsMap)
+            {
+                var channel = channelKV.Value;
+                if(!channel.Enabled)
+                    continue;
+                if(channel.Target.Speed > 0 && watch.ElapsedMilliseconds - channel.LastTimer > channel.Target.Speed)
+                {
+                    channel.LastTimer = watch.ElapsedMilliseconds;
+
+                    tcode.Append(GetTCode(channelKV.Key, (int)(channel.AtTop ? channel.Target.Top : channel.Target.Bottom), (int)channel.Target.Speed ));
+                    channel.AtTop = !channel.AtTop;
+                    // _ = tcode.Append("I100");
+                    if(!device.ChannelsMap.Last().Equals(channelKV))
+                    {
+                        _ = tcode.Append(' ');
+                    }
+                }
+            }
+            if(tcode.Length > 0)
+            {
+                SendTCode(tcode.ToString());
+                tcode.Clear();
+            }
+            await Task.Delay(period);
+        }
+    }
+
+    private async Task UpdateTCodeStream()
     {
         StringBuilder tcode = new();
         while (true)
@@ -374,29 +427,16 @@ public class ActionProvider: ProviderBase
         return output;
     }
 
-    private string GetTCode(ChannelID channelID, int value)
+    private string GetTCode(ChannelID channelID, int value, int speed = -1)
     {
         var channel = device.ChannelsMap[channelID];
         value = Math.Clamp(value, channel.Min, channel.Max);
-/*         string output;
-        if (value > 999)
+        string intervalOut = "";
+        if (speed > -1)
         {
-            output = channel.Name + value.ToString();
+            intervalOut ="I" + speed.ToString();
         }
-        else if (value > 99)
-        {
-            output = channel.Name + "0" + value.ToString();
-        }
-        else if (value > 9)
-        {
-            output = channel.Name + "00" + value.ToString();
-        }
-        else
-        {
-            output = channel.Name + "000" + value.ToString();
-        }
-        return output; */
-        return channel.Name + value.ToString().PadLeft(4, '0');
+        return channel.Name + value.ToString().PadLeft(4, '0') + intervalOut;
     }
 
     public void UpdateSettings()
