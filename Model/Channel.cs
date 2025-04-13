@@ -181,8 +181,9 @@ namespace Voxta.TCode.Model
                     m_rangeDescription = string.Format(ChannelDefault.RangeDescription, FullName, RangePercentage?.Item1 ?? 0, RangePercentage?.Item2 ?? 100);
                 return m_rangeDescription;
             }
-            set { 
-                    m_rangeDescription = string.Format(value, FullName, RangePercentage?.Item1 ?? 0, RangePercentage?.Item2 ?? 100);
+            set 
+            { 
+                m_rangeDescription = string.Format(value, FullName, RangePercentage?.Item1 ?? 0, RangePercentage?.Item2 ?? 100);
             }
         }
         public string PositionDescription
@@ -193,9 +194,10 @@ namespace Voxta.TCode.Model
                     m_positionDescription = string.Format(ChannelDefault.PositionDescription, FullName, PositionPercentage?.Item1 ?? 0, PositionPercentage?.Item2 ?? 100);
                 return m_positionDescription;
             }
-            set { 
-                    m_positionDescription = string.Format(value, FullName, PositionPercentage?.Item1 ?? 0, PositionPercentage?.Item2 ?? 100); 
-                }
+            set 
+            { 
+                m_positionDescription = string.Format(value, FullName, PositionPercentage?.Item1 ?? 0, PositionPercentage?.Item2 ?? 100); 
+            }
         }
         public string IntensityDescription
         {
@@ -205,10 +207,10 @@ namespace Voxta.TCode.Model
                     m_intensityDescription = string.Format(ChannelDefault.IntensityDescription, FullName, IntensityPercentage?.Item1 ?? 0, IntensityPercentage?.Item2 ?? 100);
                 return m_intensityDescription;
             }
-            set { 
-                
-                    m_intensityDescription = string.Format(value, FullName, IntensityPercentage?.Item1 ?? 0, IntensityPercentage?.Item2 ?? 100);}
-        }
+            set 
+            { 
+                m_intensityDescription = string.Format(value, FullName, IntensityPercentage?.Item1 ?? 0, IntensityPercentage?.Item2 ?? 100);}
+            }
         public bool IsSwitch = false;
         public bool Enabled = true;
         public ChannelTarget Target = new();
