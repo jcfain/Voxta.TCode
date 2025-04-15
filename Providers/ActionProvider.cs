@@ -117,12 +117,6 @@ public class ActionProvider: ProviderBase
             var channel = channelKV.Value;
             if(!channel.Enabled)
                 continue;
-                
-            if(!ChannelDefault.UseStreaming)
-            {
-                channel.SpeedPercentage = Tuple.Create(100, 6000);
-                channel.Target.Speed = 1000;
-            }
 
             if(channel.IsSwitch)
             {
@@ -319,7 +313,13 @@ public class ActionProvider: ProviderBase
             } 
             else
             {
-                speed = Math.Clamp(speed, channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 10);
+                
+                speed = Math.Clamp((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 10);
+                if(!ChannelDefault.UseStreaming)
+                {
+                    // Map speed to a an interval. Lower values = shorter period.
+                    speed = MathExtension.Map((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 10, 6000, 100);
+                }
             }
 
             channel.Target.Mode = "stroke";
