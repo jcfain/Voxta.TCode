@@ -36,7 +36,7 @@ namespace Voxta.TCode.Model
     public class ChannelDefault
     {
         public static bool UseStreaming = true;
-        public static readonly string SpeedDescription = "When {{{{char}}}} wants to change the rate of the {0}. Higher numbers is a more intense {0}. It can be a number {1}-{2}.";
+        public static readonly string SpeedDescription = "When {{{{char}}}} wants to change the rate of the {0}. Higher numbers is a more intense {0}. 0 means stop. It can be a number {1}-{2}.";
         public static readonly string RangeDescription = "The range of the {0}. It can be a number {1}-{2}.";
         public static readonly string PositionDescription = "The offset center position of the {0} range. This value will oscillate in the specified range if the speed is greater than 0. It can be a number {1}-{2}.";
         public static readonly string SpeedName = "{0} Speed";
@@ -48,7 +48,7 @@ namespace Voxta.TCode.Model
         {
             Name = ChannelName.Stroke, 
             FullName = "stroke", 
-            SpeedPercentage = Tuple.Create(0, 10),
+            SpeedPercentage = Tuple.Create(0, 100),
             RangePercentage = Tuple.Create(30, 100),
             PositionPercentage = Tuple.Create(10, 90), 
             RangeDescription = "The range of the {0}. When {{{{char}}}} wants to stroke the cock of {{{{user}}}}. This value is how long the stroke is. Larger numbers, the longer the stroke. This value is relative to the position value. It can be a number {1}-{2}.", 
@@ -58,7 +58,7 @@ namespace Voxta.TCode.Model
         {
             Name = ChannelName.Surge, 
             FullName = "surge",
-            SpeedPercentage = Tuple.Create(0, 10),
+            SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
             RangeDescription = "The range of the {0}. This value moves the cock back and forth. Use this when {{{{char}}}} wants to move the cock to the back and forth. For example, when {{{{char}}}} hips are thrusting on the cock. It can be a number {1}-{2}."
@@ -67,7 +67,7 @@ namespace Voxta.TCode.Model
         {
             Name = ChannelName.Sway, 
             FullName = "sway",
-            SpeedPercentage = Tuple.Create(0, 10),
+            SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
             RangeDescription = "The range of the {0}. This value moves the cock side to side. Use this on {{{{user}}}} when {{{{char}}}} wants to move the cock to the left or right. For example when the hips sway side to side. It can be a number {1}-{2}."
@@ -75,8 +75,8 @@ namespace Voxta.TCode.Model
         public static readonly Channel Twist = new()
         {
             Name = ChannelName.Twist, 
-            FullName = "yaw",
-            SpeedPercentage = Tuple.Create(0, 10),
+            FullName = "twist",
+            SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
             RangeDescription = "The range of the {0}. This value moves is yaw that twists around the cock. Use this on {{{{user}}}} when the {{{{char}}}} wants to use their tongue or twist their hand around the cock. It can be a number {1}-{2}."
@@ -85,7 +85,7 @@ namespace Voxta.TCode.Model
         {
             Name = ChannelName.Roll, 
             FullName = "roll",
-            SpeedPercentage = Tuple.Create(0, 10),
+            SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
             RangeDescription = "The range of the {0}. This value rolls side to side over the cock. Uses this on {{{{user}}}} when {{{{char}}}} is roling hips or head while giving head. It can also be used when giving a handjob. It can be a number {1}-{2}."
@@ -94,7 +94,7 @@ namespace Voxta.TCode.Model
         {
             Name = ChannelName.Pitch, 
             FullName = "pitch",
-            SpeedPercentage = Tuple.Create(0, 10),
+            SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
             RangeDescription = "The range of the {0}. This value rolls side to side over the cock. This can be used when {{{{char}}}} is pitching their hips, hand or head whne pleasuring the {{{{user}}}}s cock. It can be a number {1}-{2}."

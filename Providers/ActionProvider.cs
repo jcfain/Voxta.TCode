@@ -109,14 +109,18 @@ public class ActionProvider: ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
+        string functionDescription = "When {{ char }} wants to pleasure the penis of {{ user }}. The following parameters are used: ";
         List<FunctionArgumentDefinition> arguments = [];
         
+        ChannelID lastKey = device.ChannelsMap.Keys.Max();
         // Setup other channels for the device
         foreach(var channelKV in device.ChannelsMap)
         {
             var channel = channelKV.Value;
             if(!channel.Enabled)
                 continue;
+
+            bool isLast = lastKey == channelKV.Key;
 
             if(channel.IsSwitch)
             {
@@ -127,6 +131,7 @@ public class ActionProvider: ProviderBase
                     Required = true,
                     Description = channel.PositionDescription
                 });
+                functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.PositionName, channel.PositionDescription, isLast ? "" : " ");
                 continue;
             }
 
@@ -151,8 +156,11 @@ public class ActionProvider: ProviderBase
                 Required = true,
                 Description = channel.SpeedDescription
             });
-        }
 
+            functionDescription += string.Format("Parameter: '{0}', {1} ", channel.RangeName, channel.RangeDescription);
+            functionDescription += string.Format("Parameter: '{0}', {1} ", channel.PositionName, channel.PositionDescription);
+            functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.SpeedName, channel.SpeedDescription, isLast ? "" : " ");
+        }
         var context = new ClientUpdateContextMessage
         {
             SessionId = SessionId,
@@ -162,28 +170,31 @@ public class ActionProvider: ProviderBase
                 new()
                 {
                     // The LLM will use this name to call the action, use a good action name
-                    Name = "stroke",
+                    Name = "start_stroking",
                     // Layers allow you to run your actions separately from the scene
                     Layer = "_stroker",
                     // Helps the AI understand when and how to use the function
-                    Description = "When {{ char }} wants to give pleasure to {{ user }} sexually. This will start stroking the penis with the range and position specified by {{ char }}.",
+                    Description = functionDescription,
                     // This text will be prepended to the AI's response
                     Effect = new ActionEffect
                     {
-                        Secret = "{{ char }} is stimulating {{ user }} sexually."
+                        Secret = "{{ char }} is stimulating {{ user }}."
                     },
+                    Timing = FunctionTiming.AfterAnyMessage,
                     // Optional arguments for your action
                     Arguments = [.. arguments]
                 },
                 new()
                 {
-                    Name = "stop",
+                    Name = "stop_stroking",
                     Layer = "_stroker",
                     Description = "When {{ user }} wants {{ char }} to stop.",
                     Effect = new ActionEffect
                     {
                         Secret = "{{ char }} has stopped stimulating {{ user }}."
                     },
+                    Timing = FunctionTiming.AfterAnyMessage,
+                    FinalLayer = true,
                     Arguments =
                     [
                         new FunctionArgumentDefinition
@@ -210,15 +221,15 @@ public class ActionProvider: ProviderBase
                 switch (message.Value)
                 {
                     
-                    case "stroke":
+                    case "start_stroking":
                         HandleChannelUpdates(message);
                         break;
 
                     default:
                         foreach(var channelKV in device.ChannelsMap)
                         {
-                            if(channelKV.Key == ChannelID.Stroke)
-                                continue;
+                            // if(channelKV.Key == ChannelID.Stroke)
+                            //     continue;
                             var channel = channelKV.Value;
                             channel.Target.Mode = "stop";
                             channel.Target.Top = channel.IsSwitch ? 0 : 5000;
@@ -256,8 +267,8 @@ public class ActionProvider: ProviderBase
                 }
                 continue;
             }
-            Logger.LogInformation("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
-            Logger.LogInformation("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
+            // Logger.LogInformation("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
+            // Logger.LogInformation("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
 /*             var min = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMin")?.Value ?? "undefined";
             var max = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMax")?.Value ?? "undefined"; */
             var rangeString = message.Arguments?.FirstOrDefault(a => a.Name == channel.RangeName)?.Value ?? "undefined";
@@ -291,21 +302,22 @@ public class ActionProvider: ProviderBase
                     else
                     {
                         var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
-                        Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
+                        // Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
                         var rangePercentage = range/100f;
-                        Logger.LogInformation("[HandleMessage] {name} rangePercentage: {value}", channel.FullName,  rangePercentage);
+                        // Logger.LogInformation("[HandleMessage] {name} rangePercentage: {value}", channel.FullName,  rangePercentage);
                         var positionPercentage = position/100f;
-                        Logger.LogInformation("[HandleMessage] {name} positionPercentage: {value}", channel.FullName,  positionPercentage);
+                        // Logger.LogInformation("[HandleMessage] {name} positionPercentage: {value}", channel.FullName,  positionPercentage);
                         var offset = MathExtension.Map((int)(rangeTotal * positionPercentage), 0, rangeTotal, channel.Min, channel.Max);
-                        Logger.LogInformation("[HandleMessage] {name} offset: {value}", channel.FullName,  offset);
+                        // Logger.LogInformation("[HandleMessage] {name} offset: {value}", channel.FullName,  offset);
                         var rangeTCodeMiddle = (int)(rangeTotal * rangePercentage)/2;
-                        Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
+                        // Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
                         max = Math.Clamp(offset + rangeTCodeMiddle, channel.Min, channel.Max);
                         min = Math.Clamp(offset - rangeTCodeMiddle, channel.Min, channel.Max);
                     }
                 }
             }
             var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.SpeedName)?.Value ?? "undefined";
+            Logger.LogInformation("[HandleMessage] {name} speedString: {speed}", channel.FullName,  speedString);
             var speed = 5f;
             if (!float.TryParse(speedString, out speed)) 
             {
@@ -314,11 +326,11 @@ public class ActionProvider: ProviderBase
             else
             {
                 
-                speed = Math.Clamp((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 10);
+                speed = Math.Clamp((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 100);
                 if(!ChannelDefault.UseStreaming)
                 {
                     // Map speed to a an interval. Lower values = shorter period.
-                    speed = MathExtension.Map((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 10, 6000, 100);
+                    speed = MathExtension.Map((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 100, 6000, 300);
                 }
             }
 
