@@ -7,6 +7,12 @@ namespace Voxta.TCode.Model
         OSR6
     }
 
+    public class DeviceActions
+    {
+        public const string Stroke = "stroke";
+        public const string Stop = "stop";
+    }
+
     public class Device
     {
         public readonly DeviceType type;

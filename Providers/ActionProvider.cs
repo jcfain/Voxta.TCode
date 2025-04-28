@@ -109,58 +109,8 @@ public class ActionProvider: ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        string functionDescription = "When {{ char }} wants to pleasure the penis of {{ user }}. The following parameters are used: ";
-        List<FunctionArgumentDefinition> arguments = [];
-        
-        ChannelID lastKey = device.ChannelsMap.Keys.Max();
-        // Setup other channels for the device
-        foreach(var channelKV in device.ChannelsMap)
-        {
-            var channel = channelKV.Value;
-            if(!channel.Enabled)
-                continue;
-
-            bool isLast = lastKey == channelKV.Key;
-
-            if(channel.IsSwitch)
-            {
-                arguments.Add(new FunctionArgumentDefinition
-                {
-                    Name = channel.PositionName,
-                    Type = FunctionArgumentType.Integer,
-                    Required = true,
-                    Description = channel.PositionDescription
-                });
-                functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.PositionName, channel.PositionDescription, isLast ? "" : " ");
-                continue;
-            }
-
-            arguments.Add(new FunctionArgumentDefinition
-            {
-                Name = channel.RangeName,
-                Type = FunctionArgumentType.Integer,
-                Required = true,
-                Description = channel.RangeDescription
-            });
-            arguments.Add(new FunctionArgumentDefinition
-            {
-                Name = channel.PositionName,
-                Type = FunctionArgumentType.Integer,
-                Required = true,
-                Description = channel.PositionDescription
-            });
-            arguments.Add(new FunctionArgumentDefinition
-            {
-                Name = channel.SpeedName,
-                Type = FunctionArgumentType.Integer,
-                Required = true,
-                Description = channel.SpeedDescription
-            });
-
-            functionDescription += string.Format("Parameter: '{0}', {1} ", channel.RangeName, channel.RangeDescription);
-            functionDescription += string.Format("Parameter: '{0}', {1} ", channel.PositionName, channel.PositionDescription);
-            functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.SpeedName, channel.SpeedDescription, isLast ? "" : " ");
-        }
+        var functionDescription = "When {{ char }} wants to pleasure {{ user }} sexually.";;
+        var arguments = BuildChannelArguments(ref functionDescription);
         var context = new ClientUpdateContextMessage
         {
             SessionId = SessionId,
@@ -170,7 +120,7 @@ public class ActionProvider: ProviderBase
                 new()
                 {
                     // The LLM will use this name to call the action, use a good action name
-                    Name = "start_stroking",
+                    Name = DeviceActions.Stroke,
                     // Layers allow you to run your actions separately from the scene
                     Layer = "_stroker",
                     // Helps the AI understand when and how to use the function
@@ -186,9 +136,9 @@ public class ActionProvider: ProviderBase
                 },
                 new()
                 {
-                    Name = "stop_stroking",
+                    Name = DeviceActions.Stop,
                     Layer = "_stroker",
-                    Description = "When {{ user }} wants {{ char }} to stop.",
+                    Description = "When {{ user }} wants {{ char }} to stop all sexual stimulation.",
                     Effect = new ActionEffect
                     {
                         Secret = "{{ char }} has stopped stimulating {{ user }}."
@@ -221,7 +171,7 @@ public class ActionProvider: ProviderBase
                 switch (message.Value)
                 {
                     
-                    case "start_stroking":
+                    case DeviceActions.Stroke:
                         HandleChannelUpdates(message);
                         break;
 
@@ -507,6 +457,65 @@ public class ActionProvider: ProviderBase
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Lube)) {
             device.ChannelsMap[ChannelID.Lube].Enabled = options.Value.LubeEnabled;
         }
+    }
+    private List<FunctionArgumentDefinition> BuildChannelArguments(ref string functionDescription)
+    {
+        List<FunctionArgumentDefinition> arguments = [];
+
+        // Adding the parameter descriptions to the function definition didnt seem to do anything.
+        // Not quite ready to give up but for now its commented out.
+        // functionDescription += " The following parameters are used: ";
+        
+        ChannelID lastKey = device.ChannelsMap.Keys.Max();
+        // Setup other channels for the device
+        foreach(var channelKV in device.ChannelsMap)
+        {
+            var channel = channelKV.Value;
+            if(!channel.Enabled)
+                continue;
+
+            bool isLast = lastKey == channelKV.Key;
+
+            if(channel.IsSwitch)
+            {
+                arguments.Add(new FunctionArgumentDefinition
+                {
+                    Name = channel.PositionName,
+                    Type = FunctionArgumentType.Integer,
+                    Required = true,
+                    Description = channel.PositionDescription
+                });
+                // functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.PositionName, channel.PositionDescription, isLast ? "" : " ");
+                continue;
+            }
+
+            arguments.Add(new FunctionArgumentDefinition
+            {
+                Name = channel.RangeName,
+                Type = FunctionArgumentType.Integer,
+                Required = true,
+                Description = channel.RangeDescription
+            });
+            arguments.Add(new FunctionArgumentDefinition
+            {
+                Name = channel.PositionName,
+                Type = FunctionArgumentType.Integer,
+                Required = true,
+                Description = channel.PositionDescription
+            });
+            arguments.Add(new FunctionArgumentDefinition
+            {
+                Name = channel.SpeedName,
+                Type = FunctionArgumentType.Integer,
+                Required = true,
+                Description = channel.SpeedDescription
+            });
+
+            // functionDescription += string.Format("Parameter: '{0}', {1} ", channel.RangeName, channel.RangeDescription);
+            // functionDescription += string.Format("Parameter: '{0}', {1} ", channel.PositionName, channel.PositionDescription);
+            // functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.SpeedName, channel.SpeedDescription, isLast ? "" : " ");
+        }
+        return arguments;
     }
 }
 

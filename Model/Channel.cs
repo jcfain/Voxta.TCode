@@ -61,7 +61,7 @@ namespace Voxta.TCode.Model
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value moves the cock back and forth. Use this when {{{{char}}}} wants to move the cock to the back and forth. For example, when {{{{char}}}} hips are thrusting on the cock. It can be a number {1}-{2}."
+            RangeDescription = "The range of the {0}. This value moves back and forth. It can be a number {1}-{2}."
         };
         public static readonly Channel Sway = new()
         {
@@ -70,7 +70,7 @@ namespace Voxta.TCode.Model
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
             RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value moves the cock side to side. Use this on {{{{user}}}} when {{{{char}}}} wants to move the cock to the left or right. For example when the hips sway side to side. It can be a number {1}-{2}."
+            RangeDescription = "The range of the {0}. This value moves side to side. It can be a number {1}-{2}."
         };
         public static readonly Channel Twist = new()
         {
@@ -78,8 +78,7 @@ namespace Voxta.TCode.Model
             FullName = "twist",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value moves is yaw that twists around the cock. Use this on {{{{user}}}} when the {{{{char}}}} wants to use their tongue or twist their hand around the cock. It can be a number {1}-{2}."
+            RangePercentage = Tuple.Create(10, 100)
         };
         public static readonly Channel Roll = new()
         {
@@ -87,8 +86,7 @@ namespace Voxta.TCode.Model
             FullName = "roll",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value rolls side to side over the cock. Uses this on {{{{user}}}} when {{{{char}}}} is roling hips or head while giving head. It can also be used when giving a handjob. It can be a number {1}-{2}."
+            RangePercentage = Tuple.Create(10, 100)
         };
         public static readonly Channel Pitch = new()
         {
@@ -96,22 +94,19 @@ namespace Voxta.TCode.Model
             FullName = "pitch",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value rolls side to side over the cock. This can be used when {{{{char}}}} is pitching their hips, hand or head whne pleasuring the {{{{user}}}}s cock. It can be a number {1}-{2}."
+            RangePercentage = Tuple.Create(10, 100)
         };
         public static readonly Channel Suck = new()
         {
             Name = ChannelName.SuckLevel, 
             FullName = "suck",
-            PositionPercentage =  Tuple.Create(0, 100),
-            PositionDescription = "How much suction to generate stroking upwards. This can be used when {{{{char}}}}  is sucking the cock of {{{{user}}}}. Higher values is more suck. It can be a number {1}-{2}.", 
+            PositionPercentage =  Tuple.Create(0, 100)
         };        
         public static readonly Channel Lube = new()
         {
             Name = ChannelName.Lube, 
             FullName = "lube",
             PositionPercentage = Tuple.Create(0, 100),
-            PositionDescription = "How much lube to coat the cock with. This can be used when starting things like sucking the cock or vagina insertion. It can be a number {1}-{2}.", 
             IsSwitch = true
         };
         public static readonly Channel Vibe1 = new()
