@@ -8,6 +8,7 @@ namespace Voxta.SampleProviderApp.Providers;
 
 // This is an example of a provider that receives commands from the chat and forward them to a hardware device.
 // In this example we check if there's a command such as [device speed=5] and forward this information to an external device
+[UsedImplicitly]
 public class CommandsParserProvider(
     IRemoteChatSession session,
     ILogger<CommandsParserProvider> logger,

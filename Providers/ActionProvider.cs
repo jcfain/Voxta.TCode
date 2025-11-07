@@ -14,7 +14,11 @@ namespace Voxta.TCode.Providers;
 
 // This example shows how to create and act on character action inference.
 // Note that this is typically not for user commands, another system will be released later
-public class ActionProvider: ProviderBase
+[UsedImplicitly]
+public class ActionProvider(
+    IRemoteChatSession session,
+    ILogger<ActionProvider> logger
+) : ProviderBase(session, logger)
 {
     private readonly IOptions<TCodeOptions> options;
     readonly SerialPort serial;
