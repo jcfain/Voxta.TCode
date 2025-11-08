@@ -7,25 +7,25 @@ using Voxta.Model.WebsocketMessages.ClientMessages;
 using Voxta.Model.WebsocketMessages.ServerMessages;
 using Voxta.Providers.Host;
 using System.Net.Sockets;
+using System.Net.WebSockets;
 using Voxta.TCode.Model;
+using Voxta.TCode.Helper;
 using System.Text.RegularExpressions;
 
 namespace Voxta.TCode.Providers;
-
 // This example shows how to create and act on character action inference.
 // Note that this is typically not for user commands, another system will be released later
 [UsedImplicitly]
-public class ActionProvider(
-    IRemoteChatSession session,
-    ILogger<ActionProvider> logger
-) : ProviderBase(session, logger)
+public class ActionProvider
 {
     private readonly IOptions<TCodeOptions> options;
     readonly SerialPort serial;
     readonly UdpClient udpClient;
+    readonly WsClient webSocketClient;
 
     private readonly Device device;
     private readonly Task? strokingTask;
+
     public ActionProvider(
         IRemoteChatSession session,
         ILogger<ActionProvider> logger,
@@ -53,11 +53,11 @@ public class ActionProvider(
 
     private void SetupConnection()
     {
-        if(!options.Value.UseUDP)
+        if (options.Value.ConnectionType == ConnectionType.Serial)
         {
             try
             {
-                if(!SerialPort.GetPortNames().Contains(options.Value.SerialPort))
+                if (!SerialPort.GetPortNames().Contains(options.Value.SerialPort))
                 {
                     Logger.LogError("Serial port not found: {port}", options.Value.SerialPort);
                     return;
@@ -69,37 +69,55 @@ public class ActionProvider(
                 serial.ReadTimeout = 10;
                 Logger.LogInformation("Serial connection started on port: {port}", options.Value.SerialPort);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Logger.LogError("Serial connection FAILED port: {port}", options.Value.SerialPort);
                 Logger.LogError("Reason: {reason}", e.Message);
             }
-        } 
-        else
+        }
+        else if (options.Value.ConnectionType == ConnectionType.UDP)
         {
             // Open UDP port
             try
             {
-                udpClient.Connect(options.Value.UDPAddress, options.Value.UDPPort);
-                Logger.LogInformation("UDP connection started {address}:{port}", options.Value.UDPAddress, options.Value.UDPPort);
+                udpClient.Connect(options.Value.NetworkAddress, options.Value.NetworkPort);
+                Logger.LogInformation("UDP connection started {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                Logger.LogError("UDP connection FAILED {address}:{port}", options.Value.UDPAddress, options.Value.UDPPort);
+                Logger.LogError("UDP connection FAILED {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
                 Logger.LogError("Reason: {reason}", e.Message);
             }
+        }
+        // else if (options.Value.ConnectionType == ConnectionType.WebSocket)
+        // {
+        //     // Open UDP port
+        //     try
+        //     {
+        //         webSocketClient.ConnectAsync(options.Value.NetworkAddress, options.Value.NetworkPort);
+        //         Logger.LogInformation("Websocket connection started {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
+        //     }
+        //     catch (Exception e)
+        //     {
+        //         Logger.LogError("Websocket connection FAILED {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
+        //         Logger.LogError("Reason: {reason}", e.Message);
+        //     }
+        // }
+        else
+        {
+            Logger.LogError("Unknown connection type: {connectiontype}", ptions.Value.ConnectionType);
         }
     }
 
     private void SendTCode(string tcode)
     {
         // Logger.LogInformation("Sending tcode: {min}", tcode);
-        if(!options.Value.UseUDP)
+        if(options.Value.ConnectionType == ConnectionType.Serial)
         {
             if(serial.IsOpen)
                 serial.WriteLine(tcode + "\n");
         }
-        else if(udpClient.Client.Connected)
+        else if(options.Value.ConnectionType == ConnectionType.UDP && udpClient.Client.Connected)
         {
             udpClient.Send(Encoding.ASCII.GetBytes(tcode +"\n"), tcode.Length +1);
         }

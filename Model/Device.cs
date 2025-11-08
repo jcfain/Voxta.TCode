@@ -1,5 +1,12 @@
 namespace Voxta.TCode.Model
 {
+    public enum ConnectionType
+    {
+        Serial,
+        UDP,
+        WebSocket
+    }
+
     public enum DeviceType
     {
         SSR1,

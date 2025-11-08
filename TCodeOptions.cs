@@ -7,13 +7,13 @@ namespace Voxta.TCode;
 public class TCodeOptions
 {
     [Required]
-    public required bool UseUDP { get; init; }
+    public required ConnectionType ConnectionType { get; init; }
     [Required]
     public required string SerialPort { get; init; }
     [Required]
-    public required string UDPAddress { get; init; }
+    public required string NetworkAddress { get; init; }
     [Required]
-    public required int UDPPort { get; init; }
+    public required int NetworkPort { get; init; }
     [Required]
     public required int AutoReplyDelay { get; init; }
     [Required]
