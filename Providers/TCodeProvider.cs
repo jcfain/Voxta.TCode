@@ -9,7 +9,7 @@ using Voxta.Providers.Host;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using Voxta.TCode.Model;
-using Voxta.TCode.Helper;
+//using Voxta.TCode.Helper;
 using System.Text.RegularExpressions;
 
 namespace Voxta.TCode.Providers;
@@ -21,7 +21,7 @@ public class TCodeProvider
     private readonly IOptions<TCodeOptions> options;
     readonly SerialPort serial;
     readonly UdpClient udpClient;
-    readonly WsClient webSocketClient;
+    //readonly WsClient webSocketClient;
 
     private readonly Device device;
     private readonly Task? strokingTask;

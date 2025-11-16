@@ -85,7 +85,7 @@ namespace Voxta.TCode.Helper {
             }
         }
 
-        public async Task<ResponseType> SendMessageAsync<RequestType>(RequestType message) {
+        public async Task<string> SendMessageAsync<RequestType>(RequestType message) {
             // TODO: handle serializing requests and deserializing responses, handle matching responses to the requests.
         }
 
