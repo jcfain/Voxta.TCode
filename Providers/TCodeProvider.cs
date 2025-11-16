@@ -28,7 +28,7 @@ public class TCodeProvider
 
     public TCodeProvider(
         IRemoteChatSession session,
-        ILogger<ActionProvider> logger,
+        ILogger<TCodeProvider> logger,
         IOptions<TCodeOptions> options)
         : base(session, logger)
     {
