@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 namespace Voxta.TCode.Providers;
 // This example shows how to create and act on character action inference.
 // Note that this is typically not for user commands, another system will be released later
-[UsedImplicitly]
+//[UsedImplicitly]
 public class TCodeProvider
 {
     private readonly IOptions<TCodeOptions> options;
@@ -196,8 +196,7 @@ public class TCodeProvider
                     case DeviceActions.Stroke:
                         HandleChannelUpdates(message);
                         break;
-
-                    default:
+                    case DeviceActions.Stop:
                         foreach(var channelKV in device.ChannelsMap)
                         {
                             // if(channelKV.Key == ChannelID.Stroke)
@@ -210,6 +209,9 @@ public class TCodeProvider
                             channel.Target.Speed = 0;
                         }
                         //SendTCode("DSTOP");
+                        break;
+
+                    default:
                         break;
                 }
         });

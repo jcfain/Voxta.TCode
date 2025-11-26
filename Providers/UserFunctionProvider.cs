@@ -8,7 +8,7 @@ namespace Voxta.SampleProviderApp.Providers;
 
 // This example shows how to create commands that the AI can call.
 // This will slow down the AI since there will be an LLM run before generating text.
-[UsedImplicitly]
+//[UsedImplicitly]
 public class UserFunctionProvider(
     IRemoteChatSession session,
     ILogger<UserFunctionProvider> logger

@@ -6,7 +6,7 @@ namespace Voxta.SampleProviderApp.Providers;
 
 // This runs periodically in the background and updates the context
 // Here we query the room temperature and update the context
-[UsedImplicitly]
+//[UsedImplicitly]
 public class BackgroundContextUpdaterProvider : ProviderBase
 {
     private double _lastTemperature;

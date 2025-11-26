@@ -8,7 +8,7 @@ namespace Voxta.SampleProviderApp.Providers;
 
 // This example shows how to create and act on character action inference.
 // Note that this is typically not for user commands, another system will be released later
-[UsedImplicitly]
+//[UsedImplicitly]
 public class ActionProvider(
     IRemoteChatSession session,
     ILogger<ActionProvider> logger
