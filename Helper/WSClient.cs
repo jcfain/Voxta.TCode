@@ -6,93 +6,108 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Voxta.TCode.Helper {
 
-    public class WsClient : IDisposable {
-        public bool IsConnected { get {return _IsConnected; }}
-        public int ReceiveBufferSize { get; set; } = 8192;
-        private ClientWebSocket WS;
-        private CancellationTokenSource CTS;
-        private bool _IsConnected = false;
+    public class WsClient 
+    {
+        bool m_isConnected = false;
+        readonly ClientWebSocket webSocket = new();
 
-        public async Task ConnectAsync(string address, int port)
+        public bool IsConnected()
         {
-            StringBuilder sb = new StringBuilder("ws://");
-            sb.Append(address);
-            sb.Append(":");
-            sb.Append(port);
-            ConnectAsync(sb.ToString());
+            return m_isConnected;
         }
 
-        public async Task ConnectAsync(string url)
+        public async Task Connect(string address, int port)
         {
-            if (WS != null)
+            try
             {
-                if (WS.State == WebSocketState.Open) return;
-                else WS.Dispose();
-            }
-            WS = new ClientWebSocket();
-            if (CTS != null) CTS.Dispose();
-            CTS = new CancellationTokenSource();
-            await WS.ConnectAsync(new Uri(url), CTS.Token);
-            await Task.Factory.StartNew(ReceiveLoop, CTS.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-        }
+                using (webSocket)
+                {
+                    // Optional: Set headers if needed
+                    // webSocket.Options.AddSubProtocol("my-protocol");
+                    var uri = $"ws://{address}:{port}/ws";
+                    await webSocket.ConnectAsync(new Uri(uri), CancellationToken.None);
 
-        public async Task SendAsync(string url)
-        {
-            // TODO WS.se
-        }
+                    // Start receiving messages in a separate task
+                    Task receiveTask = ReceiveMessages(webSocket);
 
-        public async Task DisconnectAsync() {
-            if (WS is null) return;
-            // TODO: requests cleanup code, sub-protocol dependent.
-            if (WS.State == WebSocketState.Open) {
-                CTS.CancelAfter(TimeSpan.FromSeconds(2));
-                await WS.CloseOutputAsync(WebSocketCloseStatus.Empty, "", CancellationToken.None);
-                await WS.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-            }
-            WS.Dispose();
-            WS = null;
-            CTS.Dispose();
-            CTS = null;
-        }
-
-        public void Dispose() => DisconnectAsync().Wait();
-
-        private async Task ReceiveLoop() {
-            var loopToken = CTS.Token;
-            MemoryStream outputStream = null;
-            WebSocketReceiveResult receiveResult = null;
-            var buffer = new byte[ReceiveBufferSize];
-            try {
-                while (!loopToken.IsCancellationRequested) {
-                    outputStream = new MemoryStream(ReceiveBufferSize);
-                    do {
-                        receiveResult = await WS.ReceiveAsync(buffer, CTS.Token);
-                        if (receiveResult.MessageType != WebSocketMessageType.Close)
-                            outputStream.Write(buffer, 0, receiveResult.Count);
-                    }
-                    while (!receiveResult.EndOfMessage);
-                    if (receiveResult.MessageType == WebSocketMessageType.Close) break;
-                    outputStream.Position = 0;
-                    ResponseReceived(outputStream);
+                    // Send initial message
+                    SendTCode("D1");
                 }
             }
-            catch (TaskCanceledException) { }
-            finally {
-                outputStream?.Dispose();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Websocket Error: {ex.Message}");
             }
         }
 
-        public async Task<string> SendMessageAsync<RequestType>(RequestType message) {
-            // TODO: handle serializing requests and deserializing responses, handle matching responses to the requests.
+        public void SendTCode(string message)
+        {
+            Send(message + '\n');
         }
 
-        private void ResponseReceived(Stream inputStream) {
-            // TODO: handle deserializing responses and matching them to the requests.
-            // IMPORTANT: DON'T FORGET TO DISPOSE THE inputStream!
-            _IsConnected = true;
+        public async void Disconnect(string message)
+        {
+            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+            m_isConnected = false;
+        }
+
+        async void Send(string message)
+        {
+            await SendMessage(webSocket, message);
+        }
+
+        async Task ReceiveMessages(ClientWebSocket webSocket)
+        {
+            byte[] buffer = new byte[1024];
+            StringBuilder builderCache = new();
+            while (webSocket.State == WebSocketState.Open)
+            {
+                try
+                {
+                    WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                        break;
+                    }
+
+                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    Console.WriteLine($"Received: {message}");
+                    builderCache.Append(message);
+                    if(message.EndsWith('\n'))
+                    {
+                        string response = builderCache.ToString();
+                        if(response.StartsWith("TCode"))
+                        {
+                            m_isConnected = true;
+                            Console.WriteLine($"TCode connected: {response}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Receive error: {ex.Message}");
+                    break;
+                }
+            }
+        }
+
+        static async Task SendMessage(ClientWebSocket webSocket, string message)
+        {
+            if (webSocket.State != WebSocketState.Open)
+            {
+                Console.WriteLine("WebSocket is not open!");
+                return;
+            }
+
+            byte[] buffer = Encoding.UTF8.GetBytes(message);
+            await webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+            //Console.WriteLine($"Sent: {message}");
         }
     }
 

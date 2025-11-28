@@ -44,7 +44,7 @@ services.AddVoxtaProvider(builder =>
     //builder.AddProvider<BackgroundContextUpdaterProvider>();
     //builder.AddProvider<CommandsParserProvider>();
     // builder.AddProvider<ActionProvider>();
-    builder.AddProvider<TcodeProvider>();
+    builder.AddProvider<TCodeProvider>();
     //builder.AddProvider<UserFunctionProvider>();
 });
 

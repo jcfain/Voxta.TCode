@@ -1,7 +1,11 @@
 
+using System;
 using Voxta.Model.Shared;
-using Voxta.Model.WebsocketMessages.ClientMessages;
+using Voxta.Model.Shared.Forms;
 
+namespace Voxta.Model.WebsocketMessages.ClientMessages;
+
+[Serializable]
 public class TCodeApp : ClientMessage
 {
     public string? ClientVersion { get; init; }

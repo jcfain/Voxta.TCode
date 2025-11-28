@@ -7,21 +7,18 @@ using Voxta.Model.WebsocketMessages.ClientMessages;
 using Voxta.Model.WebsocketMessages.ServerMessages;
 using Voxta.Providers.Host;
 using System.Net.Sockets;
-using System.Net.WebSockets;
 using Voxta.TCode.Model;
-//using Voxta.TCode.Helper;
-using System.Text.RegularExpressions;
+using Voxta.TCode.Helper;
 
 namespace Voxta.TCode.Providers;
-// This example shows how to create and act on character action inference.
-// Note that this is typically not for user commands, another system will be released later
+// This controls a tcode device
 //[UsedImplicitly]
-public class TCodeProvider
+public class TCodeProvider : ProviderBase
 {
     private readonly IOptions<TCodeOptions> options;
     readonly SerialPort serial;
     readonly UdpClient udpClient;
-    //readonly WsClient webSocketClient;
+    readonly WsClient webSocketClient;
 
     private readonly Device device;
     private readonly Task? strokingTask;
@@ -35,23 +32,23 @@ public class TCodeProvider
         this.options = options;
         serial = new SerialPort();
         udpClient = new UdpClient();
+        webSocketClient = new WsClient();
         device = new Device(options.Value.DeviceType);
         UpdateSettings();
-        SetupConnection();
-
+        SetupConnection().Wait();
         if(serial.IsOpen) 
         {
             ChannelDefault.UseStreaming = true;
             strokingTask = UpdateTCodeStream();
         }
-        else if(udpClient.Client.Connected)
+        else if(udpClient.Client.Connected || webSocketClient.IsConnected())
         {
             ChannelDefault.UseStreaming = false;
             strokingTask = UpdateTCode();
         }
     }
 
-    private void SetupConnection()
+    private async Task SetupConnection()
     {
         if (options.Value.ConnectionType == ConnectionType.Serial)
         {
@@ -89,23 +86,23 @@ public class TCodeProvider
                 Logger.LogError("Reason: {reason}", e.Message);
             }
         }
-        // else if (options.Value.ConnectionType == ConnectionType.WebSocket)
-        // {
-        //     // Open UDP port
-        //     try
-        //     {
-        //         webSocketClient.ConnectAsync(options.Value.NetworkAddress, options.Value.NetworkPort);
-        //         Logger.LogInformation("Websocket connection started {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         Logger.LogError("Websocket connection FAILED {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
-        //         Logger.LogError("Reason: {reason}", e.Message);
-        //     }
-        // }
+        else if (options.Value.ConnectionType == ConnectionType.WebSocket)
+        {
+            // Open UDP port
+            try
+            {
+                await webSocketClient.Connect(options.Value.NetworkAddress, options.Value.NetworkPort);
+                Logger.LogInformation("Websocket connection started {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Websocket connection FAILED {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
+                Logger.LogError("Reason: {reason}", e.Message);
+            }
+        }
         else
         {
-            Logger.LogError("Unknown connection type: {connectiontype}", ptions.Value.ConnectionType);
+            Logger.LogError("Unknown connection type: {connectiontype}", options.Value.ConnectionType);
         }
     }
 
@@ -121,6 +118,10 @@ public class TCodeProvider
         {
             udpClient.Send(Encoding.ASCII.GetBytes(tcode +"\n"), tcode.Length +1);
         }
+        else if(options.Value.ConnectionType == ConnectionType.WebSocket && webSocketClient.IsConnected())
+        {
+            webSocketClient.SendTCode(tcode);
+        }
     }
 
     private void UDPCallback(IAsyncResult result) 
@@ -128,10 +129,15 @@ public class TCodeProvider
         // Console.WriteLine("UDP callback");
     }
 
+    protected override void OnMessage(ServerChatSessionMessage message)
+    {
+        //SendWhenFree(new TCodeApp());
+    }
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        var functionDescription = "When {{ char }} wants to pleasure {{ user }} sexually.";;
+        //var functionDescription = "When {{ char }} wants to pleasure {{ user }} sexually.";
+        var functionDescription = "When {{ char }} wants to interact with the penis of {{ user }}.";
         var arguments = BuildChannelArguments(ref functionDescription);
         var context = new ClientUpdateContextMessage
         {
