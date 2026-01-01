@@ -136,7 +136,7 @@ public class TCodeProvider : ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        var functionDescription = "When {{ char }} wants to physically interact with {{ user }} sexually.";
+        var functionDescription = "When {{ char }} wants to physically interact with the reproductive organ of {{ user }} in a sexual manner.";
         var arguments = BuildChannelArguments(ref functionDescription);
         var context = new ClientUpdateContextMessage
         {
@@ -155,9 +155,9 @@ public class TCodeProvider : ProviderBase
                     // This text will be prepended to the AI's response
                     Effect = new ActionEffect
                     {
-                        Secret = "{{ char }} is physically stimulating {{ user }}."
+                        Secret = "{{ char }} is physically stimulating the reproductive organ of {{ user }} in a sexual manner."
                     },
-                    Timing = FunctionTiming.AfterAssistantMessage,
+                    Timing = FunctionTiming.BeforeAssistantMessage,
                     // Optional arguments for your action
                     Arguments = [.. arguments]
                 },
@@ -195,30 +195,27 @@ public class TCodeProvider : ProviderBase
             // We only care about our layer
             if (message.Layer != "_stroker") return;
 
-                switch (message.Value)
-                {
-                    
-                    case DeviceActions.Stroke:
-                        HandleChannelUpdates(message);
-                        break;
-                    case DeviceActions.Stop:
-                        foreach(var channelKV in device.ChannelsMap)
-                        {
-                            // if(channelKV.Key == ChannelID.Stroke)
-                            //     continue;
-                            var channel = channelKV.Value;
-                            channel.Target.Mode = "stop";
-                            channel.Target.Top = channel.IsSwitch ? 0 : 5000;
-                            channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
-                            Logger.LogInformation("Stop");
-                            channel.Target.Speed = 0;
-                        }
-                        //SendTCode("DSTOP");
-                        break;
+            switch (message.Value)
+            {
+                
+                case DeviceActions.Stroke:
+                    HandleChannelUpdates(message);
+                    break;
+                case DeviceActions.Stop:
+                    foreach(var channelKV in device.ChannelsMap)
+                    {
+                        var channel = channelKV.Value;
+                        channel.Target.Mode = "stop";
+                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Speed = 0;
+                    }
+                    Logger.LogInformation("Stop");
+                    break;
 
-                    default:
-                        break;
-                }
+                default:
+                    break;
+            }
         });
     }
 
