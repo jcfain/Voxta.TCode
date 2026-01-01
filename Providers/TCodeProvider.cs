@@ -136,8 +136,7 @@ public class TCodeProvider : ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        //var functionDescription = "When {{ char }} wants to pleasure {{ user }} sexually.";
-        var functionDescription = "When {{ char }} wants to interact with the penis of {{ user }}.";
+        var functionDescription = "When {{ char }} wants to physically interact with {{ user }} sexually.";
         var arguments = BuildChannelArguments(ref functionDescription);
         var context = new ClientUpdateContextMessage
         {
@@ -156,9 +155,9 @@ public class TCodeProvider : ProviderBase
                     // This text will be prepended to the AI's response
                     Effect = new ActionEffect
                     {
-                        Secret = "{{ char }} is stimulating {{ user }}."
+                        Secret = "{{ char }} is physically stimulating {{ user }}."
                     },
-                    Timing = FunctionTiming.AfterAnyMessage,
+                    Timing = FunctionTiming.AfterAssistantMessage,
                     // Optional arguments for your action
                     Arguments = [.. arguments]
                 },
@@ -166,10 +165,10 @@ public class TCodeProvider : ProviderBase
                 {
                     Name = DeviceActions.Stop,
                     Layer = "_stroker",
-                    Description = "When {{ user }} wants {{ char }} to stop all sexual stimulation.",
+                    Description = "When {{ user }} or {{ char }} wants to stop all sexual stimulation.",
                     Effect = new ActionEffect
                     {
-                        Secret = "{{ char }} has stopped stimulating {{ user }}."
+                        Secret = "{{ char }} has stopped physically stimulating {{ user }}."
                     },
                     Timing = FunctionTiming.AfterAnyMessage,
                     FinalLayer = true,
@@ -238,7 +237,7 @@ public class TCodeProvider : ProviderBase
                 int position = 0;
                 if(!int.TryParse(positionSwitchString, out position))
                 {
-                    Logger.LogError("[HandleMessage] Invalid switched intensity: {value}", positionSwitchString);
+                    // Logger.LogError("[HandleMessage] Invalid switched intensity: {value}", positionSwitchString);
                 }
                 else
                 {
@@ -247,20 +246,21 @@ public class TCodeProvider : ProviderBase
                 }
                 continue;
             }
-            // Logger.LogInformation("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
-            // Logger.LogInformation("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
+            // Logger.LogDebug("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
+            // Logger.LogDebug("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
 /*             var min = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMin")?.Value ?? "undefined";
             var max = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMax")?.Value ?? "undefined"; */
             var rangeString = message.Arguments?.FirstOrDefault(a => a.Name == channel.RangeName)?.Value ?? "undefined";
             var positionString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value ?? "undefined";
-            Logger.LogInformation("[HandleMessage] {name} rangeString: {min}", channel.FullName, rangeString);
-            Logger.LogInformation("[HandleMessage] {name} positionString: {max}", channel.FullName,  positionString);
+            Logger.LogDebug("[HandleMessage] {name} rangeString: {min}", channel.FullName, rangeString);
+            Logger.LogDebug("[HandleMessage] {name} positionString: {max}", channel.FullName,  positionString);
             var min = ChannelDefault.TCodeMin;
             var max = ChannelDefault.TCodeMax;
             var range = 0;
             if(!int.TryParse(rangeString, out range))
             {
                 Logger.LogError("[HandleMessage] {name} Invalid range: {range}", channel.FullName,  rangeString);
+                continue;
             }
             else
             {
@@ -268,6 +268,7 @@ public class TCodeProvider : ProviderBase
                 if(!int.TryParse(positionString, out position))
                 {
                     Logger.LogError("[HandleMessage] {name} Invalid position: {position}", channel.FullName,  positionString);
+                    continue;
                 } 
                 else
                 {
@@ -297,11 +298,12 @@ public class TCodeProvider : ProviderBase
                 }
             }
             var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.SpeedName)?.Value ?? "undefined";
-            Logger.LogInformation("[HandleMessage] {name} speedString: {speed}", channel.FullName,  speedString);
+            Logger.LogDebug("[HandleMessage] {name} speedString: {speed}", channel.FullName,  speedString);
             var speed = 5f;
             if (!float.TryParse(speedString, out speed)) 
             {
                 Logger.LogError("[HandleMessage] {name} Invalid speed: {value}", channel.FullName, speedString);
+                continue;
             } 
             else
             {
