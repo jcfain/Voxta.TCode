@@ -39,9 +39,9 @@ namespace Voxta.TCode.Model
         public static readonly string SpeedDescription = "When {{{{char}}}} wants to change the rate of the {0}. Higher numbers is a more intense {0}. 0 means stop. It can be a number {1}-{2}.";
         public static readonly string RangeDescription = "The range of the {0}. It can be a number {1}-{2}.";
         public static readonly string PositionDescription = "The offset center position of the {0} range. This value will oscillate in the specified range if the speed is greater than 0. It can be a number {1}-{2}.";
-        public static readonly string SpeedName = "{0} Speed";
-        public static readonly string RangeName = "{0} Range";
-        public static readonly string PositionName= "{0} Position";
+        public static readonly string SpeedName = "{0}Speed";
+        public static readonly string RangeName = "{0}Range";
+        public static readonly string PositionName= "{0}Position";
         public static readonly int TCodeMin = 0;
         public static readonly int TCodeMax = 9999;
         public static readonly Channel Stroke = new()

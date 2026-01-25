@@ -298,6 +298,11 @@ public class TCodeProvider : ProviderBase
             if(!int.TryParse(rangeString, out range))
             {
                 Logger.LogError("[HandleMessage] {name} Invalid range: {range}", channel.FullName,  rangeString);
+				
+                        channel.Target.Mode = "stop";
+                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Speed = 0;
                 continue;
             }
             else
@@ -306,6 +311,10 @@ public class TCodeProvider : ProviderBase
                 if(!int.TryParse(positionString, out position))
                 {
                     Logger.LogError("[HandleMessage] {name} Invalid position: {position}", channel.FullName,  positionString);
+                        channel.Target.Mode = "stop";
+                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Speed = 0;
                     continue;
                 } 
                 else
@@ -341,6 +350,10 @@ public class TCodeProvider : ProviderBase
             if (!float.TryParse(speedString, out speed)) 
             {
                 Logger.LogError("[HandleMessage] {name} Invalid speed: {value}", channel.FullName, speedString);
+                        channel.Target.Mode = "stop";
+                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
+                        channel.Target.Speed = 0;
                 continue;
             } 
             else
