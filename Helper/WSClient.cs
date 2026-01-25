@@ -14,6 +14,7 @@ namespace Voxta.TCode.Helper {
     {
         bool m_isConnected = false;
         readonly ClientWebSocket webSocket = new();
+        Task? receiveTask;
 
         public bool IsConnected()
         {
@@ -24,23 +25,27 @@ namespace Voxta.TCode.Helper {
         {
             try
             {
-                using (webSocket)
-                {
+                // using (webSocket)
+                // {
                     // Optional: Set headers if needed
                     // webSocket.Options.AddSubProtocol("my-protocol");
-                    var uri = $"ws://{address}:{port}/ws";
+                    var uri = "";
+                    // if(port == 80)
+                    //     uri = $"ws://{address}/ws";
+                    //  else
+                        uri = $"ws://{address}:{port}/ws";
                     await webSocket.ConnectAsync(new Uri(uri), CancellationToken.None);
+                // }
 
-                    // Start receiving messages in a separate task
-                    Task receiveTask = ReceiveMessages(webSocket);
+                // Start receiving messages in a separate task
+                receiveTask = ReceiveMessages();
 
-                    // Send initial message
-                    SendTCode("D1");
-                }
+                // Send initial message
+                SendTCode("D1");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Websocket Error: {ex.Message}");
+                Console.WriteLine($"Websocket connection Error: {ex.Message}");
             }
         }
 
@@ -49,7 +54,7 @@ namespace Voxta.TCode.Helper {
             Send(message + '\n');
         }
 
-        public async void Disconnect(string message)
+        public async void Disconnect()
         {
             await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
             m_isConnected = false;
@@ -60,7 +65,7 @@ namespace Voxta.TCode.Helper {
             await SendMessage(webSocket, message);
         }
 
-        async Task ReceiveMessages(ClientWebSocket webSocket)
+        async Task ReceiveMessages()
         {
             byte[] buffer = new byte[1024];
             StringBuilder builderCache = new();
@@ -79,10 +84,10 @@ namespace Voxta.TCode.Helper {
                     string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     Console.WriteLine($"Received: {message}");
                     builderCache.Append(message);
-                    if(message.EndsWith('\n'))
+                    if(message.EndsWith('\n') || (message.StartsWith('{') && message.Contains("TCode")))// TODO: add proper json parsing for websocket
                     {
                         string response = builderCache.ToString();
-                        if(response.StartsWith("TCode"))
+                        if(response.Contains("TCode"))
                         {
                             m_isConnected = true;
                             Console.WriteLine($"TCode connected: {response}");
@@ -101,7 +106,7 @@ namespace Voxta.TCode.Helper {
         {
             if (webSocket.State != WebSocketState.Open)
             {
-                Console.WriteLine("WebSocket is not open!");
+                Console.WriteLine("WebSocket was not open when sending the message: '{message}'", message);
                 return;
             }
 
