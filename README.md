@@ -23,8 +23,11 @@ The settings are as follows:
     (Only some devices have the Channels. You only need to set the ones you need for your DeviceType specified above)
     "(Channel)Min": 0,
     "(Channel)Max": 9999
-* This will reply in chat if you dont say anything within this timeout in milliseconds
+* This will reply in chat if you dont say anything within this timeout in milliseconds -1 to disable
     "AutoReplyDelay": 300000
+* This will control the min and max speed of the channels in milliseconds. ex: MaxInterval: 5000 takes 5 seconds for half an occilation 
+    "MaxInterval": 2500,
+    "MinInterval": 300
 
 If not installed, Install dotnet v10 then simply execute RUN.bat OR use `dotnet run` and the app should start. It will connect to Voxta sessions on the current machine.
 

@@ -229,8 +229,18 @@ namespace Voxta.TCode.Model
         public bool AtTop = false;
         public int Min = 0;
         public int Max = 9999;
+        public string LastTCode = "";
         private string m_rangeDescription = "";
         private string m_positionDescription = "";
         private string m_speedDescription = "";
+        private readonly Mutex mutex = new();
+        public bool Lock()
+        {
+            return false;//mutex.WaitOne();
+        }
+        public void Unlock()
+        {
+            //mutex.ReleaseMutex();
+        }
     }
 }

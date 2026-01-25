@@ -1,12 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text; 
-using System.IO.Ports;
 using Voxta.Model.Shared;
 using Voxta.Model.WebsocketMessages.ClientMessages;
 using Voxta.Model.WebsocketMessages.ServerMessages;
 using Voxta.Providers.Host;
-using System.Net.Sockets;
 using Voxta.TCode.Model;
 using Voxta.TCode.Helper;
 
@@ -16,12 +14,10 @@ namespace Voxta.TCode.Providers;
 public class TCodeProvider : ProviderBase
 {
     private readonly IOptions<TCodeOptions> options;
-    readonly SerialPort serial;
-    readonly UdpClient udpClient;
-    readonly WsClient webSocketClient;
 
     private readonly Device device;
     private Task? strokingTask;
+    private readonly ConnectionHandler connectionHandler;
 
     public TCodeProvider(
         IRemoteChatSession session,
@@ -30,115 +26,38 @@ public class TCodeProvider : ProviderBase
         : base(session, logger)
     {
         this.options = options;
-        serial = new SerialPort();
-        udpClient = new UdpClient();
-        webSocketClient = new WsClient();
+        connectionHandler = new(logger);
         device = new Device(options.Value.DeviceType);
         UpdateSettings();
-    }
-
-    private bool IsConnected()
-    {
-        return serial.IsOpen || udpClient.Client.Connected || webSocketClient.IsConnected();
+        Connect();
     }
 
     private void Connect()
     {
-        SetupConnection().Wait();
-        if(serial.IsOpen) 
+        if(options.Value.ConnectionType == ConnectionType.Serial && !connectionHandler.IsConnected(ConnectionType.Serial)) 
         {
+            connectionHandler.Connect(options.Value.ConnectionType, options.Value.SerialPort);
             ChannelDefault.UseStreaming = true;
-            strokingTask = UpdateTCodeStream();
+            // TODO: If connection can be changed, figure this out...someday maybe
+            // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
+            //     strokingTask.Dispose();
+            if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
+                strokingTask = UpdateTCodeStream();
         }
-        else if(udpClient.Client.Connected || webSocketClient.IsConnected())
+        else if(options.Value.ConnectionType == ConnectionType.UDP || options.Value.ConnectionType == ConnectionType.WebSocket)
         {
+            if(options.Value.ConnectionType == ConnectionType.WebSocket && connectionHandler.IsConnected(ConnectionType.WebSocket))
+                return;
+            connectionHandler.Connect(options.Value.ConnectionType, options.Value.NetworkAddress, options.Value.NetworkPort);
             ChannelDefault.UseStreaming = false;
-            strokingTask = UpdateTCode();
+            // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
+            //     strokingTask.Dispose();
+            if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
+                strokingTask = UpdateTCode();
         }
     }
 
-    private async Task SetupConnection()
-    {
-        if (options.Value.ConnectionType == ConnectionType.Serial)
-        {
-            try
-            {
-                if (!SerialPort.GetPortNames().Contains(options.Value.SerialPort))
-                {
-                    Logger.LogError("Serial port not found: {port}", options.Value.SerialPort);
-                    return;
-                }
-                serial.PortName = options.Value.SerialPort;
-                serial.BaudRate = 115200;
-                serial.Open();
-                serial.DtrEnable = true;
-                serial.ReadTimeout = 10;
-                Logger.LogInformation("Serial connection started on port: {port}", options.Value.SerialPort);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError("Serial connection FAILED port: {port}", options.Value.SerialPort);
-                Logger.LogError("Reason: {reason}", e.Message);
-            }
-        }
-        else if (options.Value.ConnectionType == ConnectionType.UDP)
-        {
-            // Open UDP port
-            try
-            {
-                udpClient.Connect(options.Value.NetworkAddress, options.Value.NetworkPort);
-                Logger.LogInformation("UDP connection started {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError("UDP connection FAILED {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
-                Logger.LogError("Reason: {reason}", e.Message);
-            }
-        }
-        else if (options.Value.ConnectionType == ConnectionType.WebSocket)
-        {
-            // Open UDP port
-            try
-            {
-                await webSocketClient.Connect(options.Value.NetworkAddress, options.Value.NetworkPort);
-                Logger.LogInformation("Websocket connection started {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError("Websocket connection FAILED {address}:{port}", options.Value.NetworkAddress, options.Value.NetworkPort);
-                Logger.LogError("Reason: {reason}", e.Message);
-            }
-        }
-        else
-        {
-            Logger.LogError("Unknown connection type: {connectiontype}", options.Value.ConnectionType);
-        }
-    }
 
-    private void SendTCode(string tcode)
-    {
-        if(!IsConnected())
-            return;
-        // Logger.LogInformation("Sending tcode: {min}", tcode);
-        if(options.Value.ConnectionType == ConnectionType.Serial)
-        {
-            if(serial.IsOpen)
-                serial.WriteLine(tcode + "\n");
-        }
-        else if(options.Value.ConnectionType == ConnectionType.UDP && udpClient.Client.Connected)
-        {
-            udpClient.Send(Encoding.ASCII.GetBytes(tcode +"\n"), tcode.Length +1);
-        }
-        else if(options.Value.ConnectionType == ConnectionType.WebSocket && webSocketClient.IsConnected())
-        {
-            webSocketClient.SendTCode(tcode);
-        }
-    }
-
-    private void UDPCallback(IAsyncResult result) 
-    {
-        // Console.WriteLine("UDP callback");
-    }
 
     protected override void OnMessage(ServerChatSessionMessage message)
     {
@@ -147,80 +66,9 @@ public class TCodeProvider : ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        var functionDescription = "When {{ char }} wants to physically interact with {{ user }} in a sexual manner.";
-        var arguments = BuildChannelArguments(ref functionDescription);
-        var context = new ClientUpdateContextMessage
-        {
-            SessionId = SessionId,
-            ContextKey = "ChannelActions",
-            Actions = 
-            [
-                new()
-                {
-                    // The LLM will use this name to call the action, use a good action name
-                    Name = DeviceActions.Stroke,
-                    // Layers allow you to run your actions separately from the scene
-                    Layer = "_stroker",
-                    // Helps the AI understand when and how to use the function
-                    Description = functionDescription,
-                    // This text will be prepended to the AI's response
-                    Effect = new ActionEffect
-                    {
-                        Secret = "{{ char }} is physically stimulating the reproductive organ of {{ user }} in a sexual manner."
-                    },
-                    Timing = FunctionTiming.BeforeAssistantMessage,
-                    // Optional arguments for your action
-                    Arguments = [.. arguments]
-                },
-                new()
-                {
-                    Name = DeviceActions.Stop,
-                    Layer = "_stroker",
-                    Description = "When {{ user }} or {{ char }} wants to stop all sexual stimulation.",
-                    Effect = new ActionEffect
-                    {
-                        Secret = "{{ char }} has stopped physically stimulating {{ user }}."
-                    },
-                    Timing = FunctionTiming.BeforeAssistantMessage,
-                    FinalLayer = true,
-                    Arguments =
-                    [
-                        new FunctionArgumentDefinition
-                        {
-                            Name = "speed",
-                            Type = FunctionArgumentType.Integer,
-                            Required = true,
-                            Description = "It can be a number 0."
-                        }
-                    ]
-                },
-                new()
-                {
-                    Name = DeviceActions.Connect,
-                    Layer = "_stroker",
-                    Description = "When {{ char }} connects to the stroker device.",
-                    Effect = new ActionEffect
-                    {
-                        Secret = $"{{{{ char }}}} has attempted to connect to the device via {options.Value.ConnectionType}."
-                    },
-                    Timing = FunctionTiming.AfterAssistantMessage,
-                    FinalLayer = true,
-                    Arguments =
-                    [
-                        // new FunctionArgumentDefinition
-                        // {
-                        //     Name = "connect",
-                        //     Type = FunctionArgumentType.Boolean,
-                        //     Required = true,
-                        //     Description = "It can be true or false. Both attempt to connect to the device."
-                        // }
-                    ]
-                }
-            ]
-        };
-
+       
         // Register our action
-        Send(context);
+        Send(GetContext());
 
         // Act when an action is called
         HandleMessage<ServerActionMessage>(message =>
@@ -238,133 +86,221 @@ public class TCodeProvider : ProviderBase
                     foreach(var channelKV in device.ChannelsMap)
                     {
                         var channel = channelKV.Value;
-                        channel.Target.Mode = "stop";
-                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Speed = 0;
+                        StopChannel(ref channel);
                     }
                     Logger.LogInformation("Stop");
                     break;
                 case DeviceActions.Connect:
-                    if(IsConnected())
-                        break;
                     Logger.LogInformation("Connect");
                     Connect();
                     break;
-
                 default:
                     break;
             }
         });
     }
 
+    private ClientUpdateContextMessage GetContext()
+    { 
+        ClientUpdateContextMessage context;
+        if(connectionHandler.IsConnected())
+        {
+            Logger.LogInformation("GetContext: connected");
+            var functionDescription = "When {{ char }} wants to physically interact with {{ user }} in a sexual manner.";
+            var arguments = BuildChannelArguments(ref functionDescription);
+            context = new ClientUpdateContextMessage
+            {
+                SessionId = SessionId,
+                ContextKey = "connected",
+                Actions = 
+                [
+                    new()
+                    {
+                        // The LLM will use this name to call the action, use a good action name
+                        Name = DeviceActions.Stroke,
+                        // Layers allow you to run your actions separately from the scene
+                        Layer = "_stroker",
+                        // Helps the AI understand when and how to use the function
+                        Description = functionDescription,
+                        // This text will be prepended to the AI's response
+                        Effect = new ActionEffect
+                        {
+                            Secret = "{{ char }} is physically stimulating the reproductive organ of {{ user }} in a sexual manner."
+                        },
+                        Timing = FunctionTiming.BeforeAssistantMessage,
+                        // Optional arguments for your action
+                        Arguments = [.. arguments]
+                    },
+                    new()
+                    {
+                        Name = DeviceActions.Stop,
+                        Layer = "_stroker",
+                        Description = "When {{ user }} or {{ char }} wants to stop all sexual stimulation.",
+                        Effect = new ActionEffect
+                        {
+                            Secret = "{{ char }} has stopped physically stimulating {{ user }}."
+                        },
+                        Timing = FunctionTiming.BeforeAssistantMessage,
+                        FinalLayer = false,
+                        Arguments =
+                        [
+                            new FunctionArgumentDefinition
+                            {
+                                Name = "speed",
+                                Type = FunctionArgumentType.Integer,
+                                Required = true,
+                                Description = "It can be a number 0."
+                            }
+                        ]
+                    }
+                ]
+            };
+        }
+        else
+        {
+            Logger.LogInformation("GetContext: disconnected");
+            context = new ClientUpdateContextMessage
+            {
+                SessionId = SessionId,
+                ContextKey = "disconnected",
+                Actions = 
+                [
+                    new()
+                    {
+                        Name = DeviceActions.Connect,
+                        Layer = "_stroker",
+                        Description = "When {{ char }} connects to the stroker device.",
+                        Effect = new ActionEffect
+                        {
+                            Secret = $"{{{{ char }}}} has attempted to connect to the device via {options.Value.ConnectionType}."
+                        },
+                        Timing = FunctionTiming.BeforeAssistantMessage,
+                        FinalLayer = false,
+                        Arguments = []
+                    }
+                ]
+            };
+        }
+        return context;
+    }
+
     private void HandleChannelUpdates(ServerActionMessage message)
     {
-        if(!IsConnected())
-            return;
-        // var channelID = ChannelID.Stroke;
-        // var channel = device.ChannelsMap[channelID];
+        if(!connectionHandler.IsConnected())
+        {
+            Logger.LogInformation("HandleChannelUpdates: reconnect");
+            Connect();
+        }
+
+        Logger.LogInformation("HandleChannelUpdates");
+        // if(options.Value.ConnectionType == ConnectionType.UDP && options.Value.UdpTimeout > -1)
+        // {
+        //     Util.Debounce<bool>(x => {
+        //         Logger.LogInformation("UDP timeout: {timeout}", options.Value.UdpTimeout);
+        //         connectionHandler.Disconnect();
+        //     }, options.Value.UdpTimeout);
+        // }
         foreach(var channelKV in device.ChannelsMap)
         {
             var channel = channelKV.Value;
             if(!channel.Enabled)
                 continue;
+            // channel.Lock();
             if(channel.IsSwitch)
             {
-                var positionSwitchString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value ?? "undefined";
+                var positionSwitchString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value;
+                if(positionSwitchString == null)
+                {
+                    StopChannel(ref channel);
+                    continue;
+                }
                 int position = 0;
                 if(!int.TryParse(positionSwitchString, out position))
                 {
                     // Logger.LogError("[HandleMessage] Invalid switched intensity: {value}", positionSwitchString);
+                    StopChannel(ref channel);
+                    continue;
                 }
                 else
                 {
                     position = Math.Clamp(position, channel.PositionPercentage?.Item1 ?? 0, channel.PositionPercentage?.Item2 ?? 100);
-                    SendTCode(GetTCode(channelKV.Key, MathExtension.Map(position, channel.PositionPercentage?.Item1 ?? 0, channel.PositionPercentage?.Item2 ?? 100, channel.Min, channel.Max)));
+                    connectionHandler.SendTCode(GetTCode(channelKV.Key, MathExtension.Map(position, channel.PositionPercentage?.Item1 ?? 0, channel.PositionPercentage?.Item2 ?? 100, channel.Min, channel.Max)));
                 }
                 continue;
             }
-            // Logger.LogDebug("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
-            // Logger.LogDebug("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
+            // Logger.LogInformation("[HandleMessage] {name} User min: {min}", channel.FullName, channel.Min);
+            // Logger.LogInformation("[HandleMessage] {name} User max: {max}", channel.FullName, channel.Max);
 /*             var min = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMin")?.Value ?? "undefined";
             var max = message.Arguments?.FirstOrDefault(a => a.Name == "rangeMax")?.Value ?? "undefined"; */
-            var rangeString = message.Arguments?.FirstOrDefault(a => a.Name == channel.RangeName)?.Value ?? "undefined";
-            var positionString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value ?? "undefined";
-            Logger.LogDebug("[HandleMessage] {name} rangeString: {min}", channel.FullName, rangeString);
-            Logger.LogDebug("[HandleMessage] {name} positionString: {max}", channel.FullName,  positionString);
+            var rangeString = message.Arguments?.FirstOrDefault(a => a.Name == channel.RangeName)?.Value;
+            var positionString = message.Arguments?.FirstOrDefault(a => a.Name == channel.PositionName)?.Value;
+            if(rangeString == null || positionString == null)
+            {
+                StopChannel(ref channel);
+                continue;
+            }
+            Logger.LogInformation("[HandleMessage] {name} rangeString: {min}", channel.FullName, rangeString);
+            Logger.LogInformation("[HandleMessage] {name} positionString: {max}", channel.FullName,  positionString);
             var min = ChannelDefault.TCodeMin;
             var max = ChannelDefault.TCodeMax;
             var range = 0;
             if(!int.TryParse(rangeString, out range))
             {
-                Logger.LogError("[HandleMessage] {name} Invalid range: {range}", channel.FullName,  rangeString);
-				
-                        channel.Target.Mode = "stop";
-                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Speed = 0;
+                //Logger.LogError("[HandleMessage] {name} Invalid range: {range}", channel.FullName,  rangeString);
+                StopChannel(ref channel);
                 continue;
             }
             else
             {
-                var position = 5;
+                var position = 0;
                 if(!int.TryParse(positionString, out position))
                 {
-                    Logger.LogError("[HandleMessage] {name} Invalid position: {position}", channel.FullName,  positionString);
-                        channel.Target.Mode = "stop";
-                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Speed = 0;
+                    //Logger.LogError("[HandleMessage] {name} Invalid position: {position}", channel.FullName,  positionString);
+                    StopChannel(ref channel);
                     continue;
                 } 
                 else
                 {
-                    if(range == 0)
-                    {
-                        var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
-                        var rangeMiddle = rangeTotal/2;
-                        var middleOffset = MathExtension.Map(rangeMiddle, 0, rangeTotal, channel.Min, channel.Max);
-                        max = middleOffset;
-                        min = middleOffset;
-                    } 
-                    else
-                    {
-                        var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
-                        // Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
-                        var rangePercentage = range/100f;
-                        // Logger.LogInformation("[HandleMessage] {name} rangePercentage: {value}", channel.FullName,  rangePercentage);
-                        var positionPercentage = position/100f;
-                        // Logger.LogInformation("[HandleMessage] {name} positionPercentage: {value}", channel.FullName,  positionPercentage);
-                        var offset = MathExtension.Map((int)(rangeTotal * positionPercentage), 0, rangeTotal, channel.Min, channel.Max);
-                        // Logger.LogInformation("[HandleMessage] {name} offset: {value}", channel.FullName,  offset);
-                        var rangeTCodeMiddle = (int)(rangeTotal * rangePercentage)/2;
-                        // Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
-                        max = Math.Clamp(offset + rangeTCodeMiddle, channel.Min, channel.Max);
-                        min = Math.Clamp(offset - rangeTCodeMiddle, channel.Min, channel.Max);
-                    }
+                    // if(range == 0)
+                    // {
+                    //     var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
+                    //     var rangeMiddle = rangeTotal/2;
+                    //     var middleOffset = MathExtension.Map(rangeMiddle, 0, rangeTotal, channel.Min, channel.Max);
+                    //     max = middleOffset;
+                    //     min = middleOffset;
+                    // } 
+                    // else
+                    // {
+                    var rangeTotal = Math.Clamp(Math.Abs(channel.Max - channel.Min), ChannelDefault.TCodeMin, ChannelDefault.TCodeMax);
+                    // Logger.LogInformation("[HandleMessage] {name} rangeTotal: {value}", channel.FullName,  rangeTotal);
+                    var rangePercentage = range/100f;
+                    // Logger.LogInformation("[HandleMessage] {name} rangePercentage: {value}", channel.FullName,  rangePercentage);
+                    var positionPercentage = position/100f;
+                    // Logger.LogInformation("[HandleMessage] {name} positionPercentage: {value}", channel.FullName,  positionPercentage);
+                    var offset = MathExtension.Map((int)(rangeTotal * positionPercentage), 0, rangeTotal, channel.Min, channel.Max);
+                    // Logger.LogInformation("[HandleMessage] {name} offset: {value}", channel.FullName,  offset);
+                    var rangeTCodeMiddle = (int)(rangeTotal * rangePercentage)/2;
+                    // Logger.LogInformation("[HandleMessage] {name} rangeTCodeMiddle: {value}", channel.FullName,  rangeTCodeMiddle);
+                    max = Math.Clamp(offset + rangeTCodeMiddle, channel.Min, channel.Max);
+                    min = Math.Clamp(offset - rangeTCodeMiddle, channel.Min, channel.Max);
+                    // }
                 }
             }
             var speedString = message.Arguments?.FirstOrDefault(a => a.Name == channel.SpeedName)?.Value ?? "undefined";
-            Logger.LogDebug("[HandleMessage] {name} speedString: {speed}", channel.FullName,  speedString);
-            var speed = 5f;
-            if (!float.TryParse(speedString, out speed)) 
+            Logger.LogInformation("[HandleMessage] {name} speedString: {speed}", channel.FullName,  speedString);
+            var speed = 0f;
+            if (max != min && float.TryParse(speedString, out speed)) // If range is zero speed is zero
             {
-                Logger.LogError("[HandleMessage] {name} Invalid speed: {value}", channel.FullName, speedString);
-                        channel.Target.Mode = "stop";
-                        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
-                        channel.Target.Speed = 0;
-                continue;
-            } 
-            else
-            {
-                
                 speed = Math.Clamp((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 100);
                 if(!ChannelDefault.UseStreaming)
                 {
                     // Map speed to a an interval. Lower values = shorter period.
-                    speed = MathExtension.Map((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 0, channel.SpeedPercentage?.Item2 ?? 100, 6000, 300);
+                    speed = MathExtension.Map((int)Math.Round(speed), channel.SpeedPercentage?.Item1 ?? 1, channel.SpeedPercentage?.Item2 ?? 100, options.Value.MaxInterval,  options.Value.MinInterval);
                 }
+            } 
+            else
+            {
+                //Logger.LogError("[HandleMessage] {name} Invalid speed: {value}", channel.FullName, speedString);
             }
 
             channel.Target.Mode = "stroke";
@@ -372,20 +308,23 @@ public class TCodeProvider : ProviderBase
             channel.Target.Bottom = min;
             channel.Target.Speed = speed;
             Logger.LogInformation("{name} Top: {top}, Bottom: {bottom}, speed: {speed}", channel.FullName,  max, min, speed);
+            // channel.Unlock();
         }
     }
 
     private async Task UpdateTCode()
     {
+        Logger.LogInformation("StartAsync UpdateTCode task");
         StringBuilder tcode = new();
         var watch = System.Diagnostics.Stopwatch.StartNew();
         int counter = 0;
         int period = 10;
         while (true)
         {
-            if(!IsConnected())
+            if(!connectionHandler.IsConnected())
             {
                 Thread.Sleep(500);
+                //Logger.LogInformation("UpdateTCode: disconnected");
                 continue;
             }
             counter += period;
@@ -394,11 +333,12 @@ public class TCodeProvider : ProviderBase
                 var channel = channelKV.Value;
                 if(!channel.Enabled)
                     continue;
+                channel.Lock();
                 if(channel.Target.Speed > 0 && watch.ElapsedMilliseconds - channel.LastTimer > channel.Target.Speed)
                 {
                     channel.LastTimer = watch.ElapsedMilliseconds;
-
-                    tcode.Append(GetTCode(channelKV.Key, (int)(channel.AtTop ? channel.Target.Top : channel.Target.Bottom), (int)channel.Target.Speed ));
+                    channel.LastTCode = GetTCode(channelKV.Key, (int)(channel.AtTop ? channel.Target.Top : channel.Target.Bottom), (int)channel.Target.Speed);
+                    tcode.Append(channel.LastTCode);
                     channel.AtTop = !channel.AtTop;
                     // _ = tcode.Append("I100");
                     if(!device.ChannelsMap.Last().Equals(channelKV))
@@ -406,10 +346,11 @@ public class TCodeProvider : ProviderBase
                         _ = tcode.Append(' ');
                     }
                 }
+                channel.Unlock();
             }
             if(tcode.Length > 0)
             {
-                SendTCode(tcode.ToString());
+                connectionHandler.SendTCode(tcode.ToString());
                 tcode.Clear();
             }
             await Task.Delay(period);
@@ -421,9 +362,10 @@ public class TCodeProvider : ProviderBase
         StringBuilder tcode = new();
         while (true)
         {
-            if(!IsConnected())
+            if(!connectionHandler.IsConnected())
             {
                 Thread.Sleep(500);
+                Logger.LogInformation("UpdateTCodeStream: disconnected");
                 continue;
             }
             foreach(var channelKV in device.ChannelsMap)
@@ -431,6 +373,7 @@ public class TCodeProvider : ProviderBase
                 var channel = channelKV.Value;
                 if(!channel.Enabled)
                     continue;
+                channel.Lock();
                 channel.Speed = Converge(channel.Speed, channel.Target.Speed, 0.05f);
                 channel.Top = Converge(channel.Top, channel.Target.Top, 20f);
                 channel.Bottom = Converge(channel.Bottom, channel.Target.Bottom, 20f);
@@ -459,11 +402,22 @@ public class TCodeProvider : ProviderBase
                 {
                     _ = tcode.Append(' ');
                 }
+                channel.Unlock();
             }
-            SendTCode(tcode.ToString());
+            connectionHandler.SendTCode(tcode.ToString());
             tcode.Clear();
             await Task.Delay(10);
         }
+    }
+
+    private void StopChannel(ref Channel channel)
+    {
+        channel.Lock();
+        channel.Target.Mode = "stop";
+        channel.Target.Top = channel.IsSwitch ? 0 : 5000;
+        channel.Target.Bottom = channel.IsSwitch ? 0 : 5000;
+        channel.Target.Speed = 0;
+        channel.Unlock();
     }
 
     private float Converge(float input, float target, float rate)
@@ -485,70 +439,104 @@ public class TCodeProvider : ProviderBase
     private string GetTCode(ChannelID channelID, int value, int speed = -1)
     {
         var channel = device.ChannelsMap[channelID];
+        //channel.Lock();
         value = Math.Clamp(value, channel.Min, channel.Max);
         string intervalOut = "";
         if (speed > -1)
         {
             intervalOut ="I" + speed.ToString();
         }
-        return channel.Name + value.ToString().PadLeft(4, '0') + intervalOut;
+        string ret = channel.Name + value.ToString().PadLeft(4, '0') + intervalOut;
+        
+        //channel.Unlock();
+        return ret;
     }
 
     public void UpdateSettings()
     {
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Stroke)) {
+            var channel = device.ChannelsMap[ChannelID.Stroke];
+            channel.Lock();
             Logger.LogInformation("Init user stroke min: {min}", options.Value.StrokeMin);
-            device.ChannelsMap[ChannelID.Stroke].Min = options.Value.StrokeMin;
+            channel.Min = options.Value.StrokeMin;
             Logger.LogInformation("Init user stroke max: {max}", options.Value.StrokeMax);
-            device.ChannelsMap[ChannelID.Stroke].Max = options.Value.StrokeMax;
-            device.ChannelsMap[ChannelID.Stroke].Enabled = options.Value.StrokeEnabled;
+            channel.Max = options.Value.StrokeMax;
+            channel.Enabled = options.Value.StrokeEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Surge)) {
+            var channel = device.ChannelsMap[ChannelID.Surge];
+            channel.Lock();
             Logger.LogInformation("Init user surge min: {min}", options.Value.SurgeMin);
             device.ChannelsMap[ChannelID.Surge].Min = options.Value.SurgeMin;
             Logger.LogInformation("Init user surge max: {max}", options.Value.SurgeMax);
             device.ChannelsMap[ChannelID.Surge].Max = options.Value.SurgeMax;
             device.ChannelsMap[ChannelID.Surge].Enabled = options.Value.SurgeEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Sway)) {
+            var channel = device.ChannelsMap[ChannelID.Sway];
+            channel.Lock();
             Logger.LogInformation("Init user sway min: {min}", options.Value.SwayMin);
-            device.ChannelsMap[ChannelID.Sway].Min = options.Value.SwayMin;
+            channel.Min = options.Value.SwayMin;
             Logger.LogInformation("Init user sway max: {max}", options.Value.SwayMax);
-            device.ChannelsMap[ChannelID.Sway].Max = options.Value.SwayMax;
-            device.ChannelsMap[ChannelID.Sway].Enabled = options.Value.SwayEnabled;
+            channel.Max = options.Value.SwayMax;
+            channel.Enabled = options.Value.SwayEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Twist)) {
+            var channel = device.ChannelsMap[ChannelID.Twist];
+            channel.Lock();
             Logger.LogInformation("Init user twist min: {min}", options.Value.TwistMin);
-            device.ChannelsMap[ChannelID.Twist].Min = options.Value.TwistMin;
+            channel.Min = options.Value.TwistMin;
             Logger.LogInformation("Init user twist max: {max}", options.Value.TwistMax);
-            device.ChannelsMap[ChannelID.Twist].Max = options.Value.TwistMax;
-            device.ChannelsMap[ChannelID.Twist].Enabled = options.Value.TwistEnabled;
+            channel.Max = options.Value.TwistMax;
+            channel.Enabled = options.Value.TwistEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Roll)) {
+            var channel = device.ChannelsMap[ChannelID.Roll];
+            channel.Lock();
             Logger.LogInformation("Init user roll min: {min}", options.Value.RollMin);
-            device.ChannelsMap[ChannelID.Roll].Min = options.Value.RollMin;
+            channel.Min = options.Value.RollMin;
             Logger.LogInformation("Init user roll max: {max}", options.Value.RollMax);
-            device.ChannelsMap[ChannelID.Roll].Max = options.Value.RollMax;
-            device.ChannelsMap[ChannelID.Roll].Enabled = options.Value.RollEnabled;
+            channel.Max = options.Value.RollMax;
+            channel.Enabled = options.Value.RollEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Pitch)) {
+            var channel = device.ChannelsMap[ChannelID.Pitch];
+            channel.Lock();
             Logger.LogInformation("Init user pitch min: {min}", options.Value.PitchMin);
-            device.ChannelsMap[ChannelID.Pitch].Min = options.Value.PitchMin;
+            channel.Min = options.Value.PitchMin;
             Logger.LogInformation("Init user pitch max: {max}", options.Value.PitchMax);
-            device.ChannelsMap[ChannelID.Pitch].Max = options.Value.PitchMax;
-            device.ChannelsMap[ChannelID.Pitch].Enabled = options.Value.PitchEnabled;
+            channel.Max = options.Value.PitchMax;
+            channel.Enabled = options.Value.PitchEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.SuckLevel)) {
-            device.ChannelsMap[ChannelID.SuckLevel].Enabled = options.Value.SuckEnabled;
+            var channel = device.ChannelsMap[ChannelID.SuckLevel];
+            channel.Lock();
+            channel.Enabled = options.Value.SuckEnabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Vibe1)) {
-            device.ChannelsMap[ChannelID.Vibe1].Enabled = options.Value.Vibe1Enabled;
+            var channel = device.ChannelsMap[ChannelID.Vibe1];
+            channel.Lock();
+            channel.Enabled = options.Value.Vibe1Enabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Vibe2)) {
-            device.ChannelsMap[ChannelID.Vibe2].Enabled = options.Value.Vibe2Enabled;
+            var channel = device.ChannelsMap[ChannelID.Vibe2];
+            channel.Lock();
+            channel.Enabled = options.Value.Vibe2Enabled;
+            channel.Unlock();
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Lube)) {
-            device.ChannelsMap[ChannelID.Lube].Enabled = options.Value.LubeEnabled;
+            var channel = device.ChannelsMap[ChannelID.Lube];
+            channel.Lock();
+            channel.Enabled = options.Value.LubeEnabled;
+            channel.Unlock();
         }
     }
     private List<FunctionArgumentDefinition> BuildChannelArguments(ref string functionDescription)

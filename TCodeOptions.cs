@@ -62,4 +62,8 @@ public class TCodeOptions
     public required bool Vibe1Enabled { get; init; }
     [Required]
     public required bool Vibe2Enabled { get; init; }
+    [Required]
+    public required int MaxInterval { get; init; }
+    [Required]
+    public required int MinInterval { get; init; }
 }

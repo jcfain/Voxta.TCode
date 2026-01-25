@@ -16,9 +16,11 @@ public class AutoReplyProvider(
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        
-        // Automatically reply when the user does not speak
-        ConfigureAutoReply(TimeSpan.FromMilliseconds(options.Value.AutoReplyDelay), OnAutoReply);
+        if(options.Value.AutoReplyDelay > -1)
+        {
+            // Automatically reply when the user does not speak
+            ConfigureAutoReply(TimeSpan.FromMilliseconds(options.Value.AutoReplyDelay), OnAutoReply);
+        }
     }
 
     private void OnAutoReply()
