@@ -18,6 +18,7 @@ namespace Voxta.TCode.Model
     {
         public const string Stroke = "stroke";
         public const string Stop = "stop";
+        public const string Connect = "connect";
     }
 
     public class Device

@@ -7,6 +7,7 @@ The settings are as follows:
 * ConnectionType is the connection you will be using. The enum map is as follows.
     Serial: 0
     UDP: 1
+    Websocket: 2
 * If serial is elected then this is the comport to use
     "SerialPort": "COM4",
 * If UDP is selected then this is the address information
@@ -25,6 +26,6 @@ The settings are as follows:
 * This will reply in chat if you dont say anything within this timeout in milliseconds
     "AutoReplyDelay": 300000
 
-If not installed, Install dotnet v9 then simply execute RUN.bat OR use `dotnet run` and the app should start. It will connect to Voxta sessions on the current machine.
+If not installed, Install dotnet v10 then simply execute RUN.bat OR use `dotnet run` and the app should start. It will connect to Voxta sessions on the current machine.
 
 Simply use `dotnet run` and the app should start. It will connect to Voxta sessions on the current machine.

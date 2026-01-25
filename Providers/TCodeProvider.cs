@@ -21,7 +21,7 @@ public class TCodeProvider : ProviderBase
     readonly WsClient webSocketClient;
 
     private readonly Device device;
-    private readonly Task? strokingTask;
+    private Task? strokingTask;
 
     public TCodeProvider(
         IRemoteChatSession session,
@@ -35,6 +35,15 @@ public class TCodeProvider : ProviderBase
         webSocketClient = new WsClient();
         device = new Device(options.Value.DeviceType);
         UpdateSettings();
+    }
+
+    private bool IsConnected()
+    {
+        return serial.IsOpen || udpClient.Client.Connected || webSocketClient.IsConnected();
+    }
+
+    private void Connect()
+    {
         SetupConnection().Wait();
         if(serial.IsOpen) 
         {
@@ -108,6 +117,8 @@ public class TCodeProvider : ProviderBase
 
     private void SendTCode(string tcode)
     {
+        if(!IsConnected())
+            return;
         // Logger.LogInformation("Sending tcode: {min}", tcode);
         if(options.Value.ConnectionType == ConnectionType.Serial)
         {
@@ -136,7 +147,7 @@ public class TCodeProvider : ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
-        var functionDescription = "When {{ char }} wants to physically interact with the reproductive organ of {{ user }} in a sexual manner.";
+        var functionDescription = "When {{ char }} wants to physically interact with {{ user }} in a sexual manner.";
         var arguments = BuildChannelArguments(ref functionDescription);
         var context = new ClientUpdateContextMessage
         {
@@ -170,7 +181,7 @@ public class TCodeProvider : ProviderBase
                     {
                         Secret = "{{ char }} has stopped physically stimulating {{ user }}."
                     },
-                    Timing = FunctionTiming.AfterAnyMessage,
+                    Timing = FunctionTiming.BeforeAssistantMessage,
                     FinalLayer = true,
                     Arguments =
                     [
@@ -181,6 +192,28 @@ public class TCodeProvider : ProviderBase
                             Required = true,
                             Description = "It can be a number 0."
                         }
+                    ]
+                },
+                new()
+                {
+                    Name = DeviceActions.Connect,
+                    Layer = "_stroker",
+                    Description = "When {{ char }} connects to the stroker device.",
+                    Effect = new ActionEffect
+                    {
+                        Secret = $"{{{{ char }}}} has attempted to connect to the device via {options.Value.ConnectionType}."
+                    },
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    FinalLayer = true,
+                    Arguments =
+                    [
+                        // new FunctionArgumentDefinition
+                        // {
+                        //     Name = "connect",
+                        //     Type = FunctionArgumentType.Boolean,
+                        //     Required = true,
+                        //     Description = "It can be true or false. Both attempt to connect to the device."
+                        // }
                     ]
                 }
             ]
@@ -212,6 +245,12 @@ public class TCodeProvider : ProviderBase
                     }
                     Logger.LogInformation("Stop");
                     break;
+                case DeviceActions.Connect:
+                    if(IsConnected())
+                        break;
+                    Logger.LogInformation("Connect");
+                    Connect();
+                    break;
 
                 default:
                     break;
@@ -221,6 +260,8 @@ public class TCodeProvider : ProviderBase
 
     private void HandleChannelUpdates(ServerActionMessage message)
     {
+        if(!IsConnected())
+            return;
         // var channelID = ChannelID.Stroke;
         // var channel = device.ChannelsMap[channelID];
         foreach(var channelKV in device.ChannelsMap)
@@ -329,6 +370,11 @@ public class TCodeProvider : ProviderBase
         int period = 10;
         while (true)
         {
+            if(!IsConnected())
+            {
+                Thread.Sleep(500);
+                continue;
+            }
             counter += period;
             foreach(var channelKV in device.ChannelsMap)
             {
@@ -362,6 +408,11 @@ public class TCodeProvider : ProviderBase
         StringBuilder tcode = new();
         while (true)
         {
+            if(!IsConnected())
+            {
+                Thread.Sleep(500);
+                continue;
+            }
             foreach(var channelKV in device.ChannelsMap)
             {
                 var channel = channelKV.Value;
@@ -433,44 +484,44 @@ public class TCodeProvider : ProviderBase
     public void UpdateSettings()
     {
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Stroke)) {
-            Logger.LogInformation("Setting user stroke min: {min}", options.Value.StrokeMin);
+            Logger.LogInformation("Init user stroke min: {min}", options.Value.StrokeMin);
             device.ChannelsMap[ChannelID.Stroke].Min = options.Value.StrokeMin;
-            Logger.LogInformation("Setting user stroke max: {max}", options.Value.StrokeMax);
+            Logger.LogInformation("Init user stroke max: {max}", options.Value.StrokeMax);
             device.ChannelsMap[ChannelID.Stroke].Max = options.Value.StrokeMax;
             device.ChannelsMap[ChannelID.Stroke].Enabled = options.Value.StrokeEnabled;
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Surge)) {
-            Logger.LogInformation("Setting user surge min: {min}", options.Value.SurgeMin);
+            Logger.LogInformation("Init user surge min: {min}", options.Value.SurgeMin);
             device.ChannelsMap[ChannelID.Surge].Min = options.Value.SurgeMin;
-            Logger.LogInformation("Setting user surge max: {max}", options.Value.SurgeMax);
+            Logger.LogInformation("Init user surge max: {max}", options.Value.SurgeMax);
             device.ChannelsMap[ChannelID.Surge].Max = options.Value.SurgeMax;
             device.ChannelsMap[ChannelID.Surge].Enabled = options.Value.SurgeEnabled;
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Sway)) {
-            Logger.LogInformation("Setting user sway min: {min}", options.Value.SwayMin);
+            Logger.LogInformation("Init user sway min: {min}", options.Value.SwayMin);
             device.ChannelsMap[ChannelID.Sway].Min = options.Value.SwayMin;
-            Logger.LogInformation("Setting user sway max: {max}", options.Value.SwayMax);
+            Logger.LogInformation("Init user sway max: {max}", options.Value.SwayMax);
             device.ChannelsMap[ChannelID.Sway].Max = options.Value.SwayMax;
             device.ChannelsMap[ChannelID.Sway].Enabled = options.Value.SwayEnabled;
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Twist)) {
-            Logger.LogInformation("Setting user twist min: {min}", options.Value.TwistMin);
+            Logger.LogInformation("Init user twist min: {min}", options.Value.TwistMin);
             device.ChannelsMap[ChannelID.Twist].Min = options.Value.TwistMin;
-            Logger.LogInformation("Setting user twist max: {max}", options.Value.TwistMax);
+            Logger.LogInformation("Init user twist max: {max}", options.Value.TwistMax);
             device.ChannelsMap[ChannelID.Twist].Max = options.Value.TwistMax;
             device.ChannelsMap[ChannelID.Twist].Enabled = options.Value.TwistEnabled;
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Roll)) {
-            Logger.LogInformation("Setting user roll min: {min}", options.Value.RollMin);
+            Logger.LogInformation("Init user roll min: {min}", options.Value.RollMin);
             device.ChannelsMap[ChannelID.Roll].Min = options.Value.RollMin;
-            Logger.LogInformation("Setting user roll max: {max}", options.Value.RollMax);
+            Logger.LogInformation("Init user roll max: {max}", options.Value.RollMax);
             device.ChannelsMap[ChannelID.Roll].Max = options.Value.RollMax;
             device.ChannelsMap[ChannelID.Roll].Enabled = options.Value.RollEnabled;
         }
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Pitch)) {
-            Logger.LogInformation("Setting user pitch min: {min}", options.Value.PitchMin);
+            Logger.LogInformation("Init user pitch min: {min}", options.Value.PitchMin);
             device.ChannelsMap[ChannelID.Pitch].Min = options.Value.PitchMin;
-            Logger.LogInformation("Setting user pitch max: {max}", options.Value.PitchMax);
+            Logger.LogInformation("Init user pitch max: {max}", options.Value.PitchMax);
             device.ChannelsMap[ChannelID.Pitch].Max = options.Value.PitchMax;
             device.ChannelsMap[ChannelID.Pitch].Enabled = options.Value.PitchEnabled;
         }
