@@ -16,7 +16,7 @@ public class TCodeProvider : ProviderBase
     private readonly IOptions<TCodeOptions> options;
 
     private readonly Device device;
-    private Task? strokingTask;
+    private Task? updateTCodeTask;
     private readonly ConnectionHandler connectionHandler;
 
     public TCodeProvider(
@@ -27,37 +27,46 @@ public class TCodeProvider : ProviderBase
     {
         this.options = options;
         connectionHandler = new(logger);
+#pragma warning disable CS8622 // Nullability of reference types in type of parameter doesn't match the target delegate (possibly because of nullability attributes).
+        connectionHandler.ConnectedStateChange += OnConnectionChange;
+#pragma warning restore CS8622 // Nullability of reference types in type of parameter doesn't match the target delegate (possibly because of nullability attributes).
         device = new Device(options.Value.DeviceType);
         UpdateSettings();
-        Connect();
+        updateTCodeTask = UpdateTCode();
     }
 
-    private void Connect()
+    private async Task Connect()
     {
         if(options.Value.ConnectionType == ConnectionType.Serial && !connectionHandler.IsConnected(ConnectionType.Serial)) 
         {
-            connectionHandler.Connect(options.Value.ConnectionType, options.Value.SerialPort);
-            ChannelDefault.UseStreaming = true;
-            // TODO: If connection can be changed, figure this out...someday maybe
-            // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
-            //     strokingTask.Dispose();
-            if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
-                strokingTask = UpdateTCodeStream();
+            await connectionHandler.Connect(options.Value.ConnectionType, options.Value.SerialPort);
+            // ChannelDefault.UseStreaming = true;
+            // // TODO: If connection can be changed, figure this out...someday maybe
+            // // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
+            // //     strokingTask.Dispose();
+            // if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
+            //     strokingTask = UpdateTCodeStream();
         }
         else if(options.Value.ConnectionType == ConnectionType.UDP || options.Value.ConnectionType == ConnectionType.WebSocket)
         {
-            if(options.Value.ConnectionType == ConnectionType.WebSocket && connectionHandler.IsConnected(ConnectionType.WebSocket))
-                return;
-            connectionHandler.Connect(options.Value.ConnectionType, options.Value.NetworkAddress, options.Value.NetworkPort);
-            ChannelDefault.UseStreaming = false;
-            // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
-            //     strokingTask.Dispose();
-            if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
-                strokingTask = UpdateTCode();
+            // if(options.Value.ConnectionType == ConnectionType.WebSocket && connectionHandler.IsConnected(ConnectionType.WebSocket))
+            //     return;
+            await connectionHandler.Connect(options.Value.ConnectionType, options.Value.NetworkAddress, options.Value.NetworkPort);
+            // ChannelDefault.UseStreaming = false;
+            // // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
+            // //     strokingTask.Dispose();
+            // if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
+            //     strokingTask = UpdateTCode();
         }
+        await Task.Delay(10);
     }
 
-
+    public void OnConnectionChange(object sender, ConnectionEventArgs e)
+    {
+        Logger.LogInformation("Connection for {type} changed to: {state}", e.Type, e.State);
+        if(e.State == ConnectState.Connected || e.State == ConnectState.Disconnected)
+            Send(GetContext());
+    }
 
     protected override void OnMessage(ServerChatSessionMessage message)
     {
@@ -66,11 +75,15 @@ public class TCodeProvider : ProviderBase
     protected override async Task OnStartAsync()
     {
         await base.OnStartAsync();
+        Logger.LogInformation("OnStartAsync");
+        Send(GetContext());
+        _ = Connect();
        
         // Register our action
-        Send(GetContext());
+        //Send(GetContext());
 
         // Act when an action is called
+        Logger.LogInformation("OnStartAsync : HandleMessage");
         HandleMessage<ServerActionMessage>(message =>
         {
             // We only care about our layer
@@ -80,6 +93,7 @@ public class TCodeProvider : ProviderBase
             {
                 
                 case DeviceActions.Stroke:
+                    Logger.LogInformation("HandleMessage: Stroke");
                     HandleChannelUpdates(message);
                     break;
                 case DeviceActions.Stop:
@@ -88,13 +102,17 @@ public class TCodeProvider : ProviderBase
                         var channel = channelKV.Value;
                         StopChannel(ref channel);
                     }
-                    Logger.LogInformation("Stop");
+                    Logger.LogInformation("HandleMessage: Stop");
                     break;
                 case DeviceActions.Connect:
-                    Logger.LogInformation("Connect");
-                    Connect();
+                    Logger.LogInformation("HandleMessage: Connect");
+                    _ = Connect();
+                    break;
+                case DeviceActions.Wait:
+                    Logger.LogInformation("HandleMessage: Wait");
                     break;
                 default:
+                    Logger.LogInformation("HandleMessage: Unknown command {command}", message.Value);
                     break;
             }
         });
@@ -102,6 +120,7 @@ public class TCodeProvider : ProviderBase
 
     private ClientUpdateContextMessage GetContext()
     { 
+        //Logger.LogInformation("GetContext");
         ClientUpdateContextMessage context;
         if(connectionHandler.IsConnected())
         {
@@ -111,7 +130,8 @@ public class TCodeProvider : ProviderBase
             context = new ClientUpdateContextMessage
             {
                 SessionId = SessionId,
-                ContextKey = "connected",
+                ContextKey = "device",
+                Contexts = [new() { Text = "{{ user }}'s stroker device is connected." }],
                 Actions = 
                 [
                     new()
@@ -125,7 +145,7 @@ public class TCodeProvider : ProviderBase
                         // This text will be prepended to the AI's response
                         Effect = new ActionEffect
                         {
-                            Secret = "{{ char }} is physically stimulating the reproductive organ of {{ user }} in a sexual manner."
+                            Secret = "{{ char }} is physically stimulating {{ user }} in a sexual manner."
                         },
                         Timing = FunctionTiming.BeforeAssistantMessage,
                         // Optional arguments for your action
@@ -152,6 +172,19 @@ public class TCodeProvider : ProviderBase
                                 Description = "It can be a number 0."
                             }
                         ]
+                    },
+                    new()
+                    {
+                        Name = DeviceActions.Wait,
+                        Layer = "_stroker",
+                        Description = "When {{ char }} is waiting to keep the device in the current state.",
+                        Effect = new ActionEffect
+                        {
+                            Secret = $"{{{{ char }}}} is holding the current device state."
+                        },
+                        Timing = FunctionTiming.BeforeAssistantMessage,
+                        FinalLayer = false,
+                        Arguments = []
                     }
                 ]
             };
@@ -162,7 +195,8 @@ public class TCodeProvider : ProviderBase
             context = new ClientUpdateContextMessage
             {
                 SessionId = SessionId,
-                ContextKey = "disconnected",
+                ContextKey = "device",
+                Contexts = [new() { Text = "{{ user }}'s stroker device is disconnected." }],
                 Actions = 
                 [
                     new()
@@ -177,6 +211,19 @@ public class TCodeProvider : ProviderBase
                         Timing = FunctionTiming.BeforeAssistantMessage,
                         FinalLayer = false,
                         Arguments = []
+                    },
+                    new()
+                    {
+                        Name = DeviceActions.Wait,
+                        Layer = "_stroker",
+                        Description = "When {{ char }} is waiting to connect.",
+                        Effect = new ActionEffect
+                        {
+                            Secret = $"{{{{ char }}}} is waiting."
+                        },
+                        Timing = FunctionTiming.BeforeAssistantMessage,
+                        FinalLayer = false,
+                        Arguments = []
                     }
                 ]
             };
@@ -186,13 +233,12 @@ public class TCodeProvider : ProviderBase
 
     private void HandleChannelUpdates(ServerActionMessage message)
     {
+        Logger.LogInformation("HandleChannelUpdates");
         if(!connectionHandler.IsConnected())
         {
             Logger.LogInformation("HandleChannelUpdates: reconnect");
-            Connect();
+            _ = Connect();
         }
-
-        Logger.LogInformation("HandleChannelUpdates");
         // if(options.Value.ConnectionType == ConnectionType.UDP && options.Value.UdpTimeout > -1)
         // {
         //     Util.Debounce<bool>(x => {
@@ -323,8 +369,15 @@ public class TCodeProvider : ProviderBase
         {
             if(!connectionHandler.IsConnected())
             {
-                Thread.Sleep(500);
-                //Logger.LogInformation("UpdateTCode: disconnected");
+                // Connect();
+                // if(!connectionHandler.IsConnected())
+                // {
+                //     Logger.LogInformation("UpdateTCode: disconnected. Retrying in a few...");
+                //     Thread.Sleep(5000);
+                // }
+                //Logger.LogInformation("UpdateTCode: disconnected.");
+                //Connect();
+                await Task.Delay(1000);
                 continue;
             }
             counter += period;
@@ -362,10 +415,11 @@ public class TCodeProvider : ProviderBase
         StringBuilder tcode = new();
         while (true)
         {
+            Logger.LogInformation("UpdateTCodeStream");
             if(!connectionHandler.IsConnected())
             {
-                Thread.Sleep(500);
                 Logger.LogInformation("UpdateTCodeStream: disconnected");
+                await Task.Delay(1000);
                 continue;
             }
             foreach(var channelKV in device.ChannelsMap)

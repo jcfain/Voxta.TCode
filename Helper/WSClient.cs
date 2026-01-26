@@ -12,28 +12,50 @@ namespace Voxta.TCode.Helper {
 
     public class WsClient 
     {
-        bool m_isConnected = false;
-        readonly ClientWebSocket webSocket = new();
+        ClientWebSocket webSocket = new();
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+        public event EventHandler<ConnectionEventArgs> ConnectedStateChange;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         Task? receiveTask;
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+        public WsClient()
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+        {
+            webSocket.Options.KeepAliveTimeout = TimeSpan.FromSeconds(10);
+        }
+        public void ConnectionChange(ConnectState state)
+        {
+            var args = new ConnectionEventArgs
+            {
+                Type = Model.ConnectionType.WebSocket,
+                State = state
+            };
+
+            ConnectedStateChange?.Invoke(this, args);
+        }
 
         public bool IsConnected()
         {
-            return m_isConnected;
+            return webSocket.State == WebSocketState.Open ;
         }
 
         public async Task Connect(string address, int port)
         {
+            if(IsConnected())
+                return;
+            ConnectionChange(ConnectState.Connecting);
+            // var uri = "";
+            // if(port == 80)
+            //     uri = $"ws://{address}/ws";
+            //  else
+            webSocket = new();
+            var uri = $"ws://{address}:{port}/ws";
             try
             {
                 // using (webSocket)
                 // {
                     // Optional: Set headers if needed
                     // webSocket.Options.AddSubProtocol("my-protocol");
-                    var uri = "";
-                    // if(port == 80)
-                    //     uri = $"ws://{address}/ws";
-                    //  else
-                        uri = $"ws://{address}:{port}/ws";
                     await webSocket.ConnectAsync(new Uri(uri), CancellationToken.None);
                 // }
 
@@ -45,7 +67,8 @@ namespace Voxta.TCode.Helper {
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Websocket connection Error: {ex.Message}");
+                Console.WriteLine($"WsClient: Websocket connection Error: {ex.Message} {uri}");
+                ConnectionChange(ConnectState.Disconnected);
             }
         }
 
@@ -56,8 +79,9 @@ namespace Voxta.TCode.Helper {
 
         public async void Disconnect()
         {
+            ConnectionChange(ConnectState.Disconnecting);
             await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
-            m_isConnected = false;
+            ConnectionChange(ConnectState.Disconnected);
         }
 
         async void Send(string message)
@@ -89,17 +113,19 @@ namespace Voxta.TCode.Helper {
                         string response = builderCache.ToString();
                         if(response.Contains("TCode"))
                         {
-                            m_isConnected = true;
                             Console.WriteLine($"TCode connected: {response}");
+                            ConnectionChange(ConnectState.Connected);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Receive error: {ex.Message}");
+                    ConnectionChange(ConnectState.Disconnected);
                     break;
                 }
             }
+            ConnectionChange(ConnectState.Disconnected);
         }
 
         static async Task SendMessage(ClientWebSocket webSocket, string message)
