@@ -10,8 +10,10 @@ namespace Voxta.TCode.Model
     public enum DeviceType
     {
         SSR1,
+        SSR2,
         OSR2,
-        OSR6
+        OSR6,
+        TVIBE
     }
 
     public class DeviceActions
@@ -31,26 +33,33 @@ namespace Voxta.TCode.Model
             switch (type)
             {
                 case DeviceType.SSR1:
-                    {
-                        ChannelsMap = new()
+                case DeviceType.SSR2:
+                {
+                    ChannelsMap = new()
                     {
                         { ChannelID.Stroke, ChannelDefault.Stroke },
                         { ChannelID.Twist, ChannelDefault.Twist }
                     };
-                    }
-                    break;
+                }
+                 break;
                 case DeviceType.OSR2:
-                    {
-                        ChannelsMap = new()
+                {
+                    ChannelsMap = new()
                     {
                         { ChannelID.Stroke, ChannelDefault.Stroke },
                         { ChannelID.Twist, ChannelDefault.Twist },
                         { ChannelID.Roll, ChannelDefault.Roll },
                         { ChannelID.Pitch, ChannelDefault.Pitch }
                     };
-                    }
-                    break;
+                }
+                break;
+                case DeviceType.TVIBE:
+                {
+                     ChannelsMap = new();
+                }
+                break;
                 default:
+                {   
                     ChannelsMap = new()
                     {
                         { ChannelID.Stroke, ChannelDefault.Stroke },
@@ -59,8 +68,9 @@ namespace Voxta.TCode.Model
                         { ChannelID.Twist, ChannelDefault.Twist },
                         { ChannelID.Roll, ChannelDefault.Roll },
                         { ChannelID.Pitch, ChannelDefault.Pitch }
-                    };
-                    break;
+                    };    
+                }
+                break;
             }
             ChannelsMap.Add(ChannelID.SuckLevel, ChannelDefault.Suck);
             ChannelsMap.Add(ChannelID.Lube, ChannelDefault.Lube);

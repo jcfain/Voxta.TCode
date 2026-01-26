@@ -36,8 +36,8 @@ namespace Voxta.TCode.Model
     public class ChannelDefault
     {
         public static bool UseStreaming = true;
-        public static readonly string SpeedDescription = "When {{{{char}}}} wants to change the rate of the {0}. Higher numbers is a more intense {0}. 0 means stop. It can be a number {1}-{2}.";
-        public static readonly string RangeDescription = "The range of the {0}. It can be a number {1}-{2}.";
+        public static readonly string SpeedDescription = "When {{{{char}}}} wants to change the rate of the {0}. Higher numbers is a more intense {0}. The value 0 means stop the {0} where it currently is. It can be a number {1}-{2}.";
+        public static readonly string RangeDescription = "The oscillation range of the {0}. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested.";
         public static readonly string PositionDescription = "The offset center position of the {0} range. This value will oscillate in the specified range if the speed is greater than 0. It can be a number {1}-{2}.";
         public static readonly string SpeedName = "{0}Speed";
         public static readonly string RangeName = "{0}Range";
@@ -49,10 +49,10 @@ namespace Voxta.TCode.Model
             Name = ChannelName.Stroke, 
             FullName = "stroke", 
             SpeedPercentage = Tuple.Create(0, 100),
-            RangePercentage = Tuple.Create(30, 100),
             PositionPercentage = Tuple.Create(10, 90), 
-            RangeDescription = "The range of the {0}. When {{{{char}}}} wants to stroke the cock of {{{{user}}}}. This value is how long the stroke is. Larger numbers, the longer the stroke. This value is relative to the position value. It can be a number {1}-{2}.", 
-            PositionDescription = "The offset of the {0} range. Where higher numbers is the head or tip of the cock and lower numbers is the base of the cock. It can be a number {1}-{2}."
+            PositionDescription = "The offset of the {0} range. Where higher numbers is the head or tip of the penis and lower numbers is the base of the penis. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested.",
+            RangePercentage = Tuple.Create(0, 100), 
+            RangeDescription = "The oscillation range of the {0}. When {{{{char}}}} wants to stroke the penis of {{{{user}}}}. This value is how long the stroke is. Larger numbers, the longer the stroke. This value is relative to the position value. It can be a number {1}-{2}."
         };
         public static readonly Channel Surge = new()
         {
@@ -60,8 +60,9 @@ namespace Voxta.TCode.Model
             FullName = "surge",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value moves back and forth. It can be a number {1}-{2}."
+            PositionDescription = "The offset center position of the {0} range. This value will oscillate in the specified range if the speed is greater than 0. The larger the number, the farther away from {{{{user}}}} the device will go. It can be a number {1}-{2}.",
+            RangePercentage = Tuple.Create(0, 100),
+            RangeDescription = "The oscillation range of the {0}. This value moves the stoker away and toward {{{{ user }}}} in a latteral motion. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested."
         };
         public static readonly Channel Sway = new()
         {
@@ -69,8 +70,9 @@ namespace Voxta.TCode.Model
             FullName = "sway",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100),
-            RangeDescription = "The range of the {0}. This value moves side to side. It can be a number {1}-{2}."
+            PositionDescription = "The offset center position of the {0} range. This value will oscillate in the specified range if the speed is greater than 0. The larger the number, the farther to the left of {{{{user}}}} the device will go. It can be a number {1}-{2}.",
+            RangePercentage = Tuple.Create(0, 100),
+            RangeDescription = "The oscillation range of the {0}. This value moves side to side in a latteral motion. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested."
         };
         public static readonly Channel Twist = new()
         {
@@ -78,7 +80,8 @@ namespace Voxta.TCode.Model
             FullName = "twist",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100)
+            RangePercentage = Tuple.Create(0, 100),
+            RangeDescription = "The range of the {0}. This value moves around or yaw in a rotating motion. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested."
         };
         public static readonly Channel Roll = new()
         {
@@ -86,7 +89,8 @@ namespace Voxta.TCode.Model
             FullName = "roll",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100)
+            RangePercentage = Tuple.Create(0, 100),
+            RangeDescription = "The range of the {0}. This value rocks side to side in a rotating motion. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested."
         };
         public static readonly Channel Pitch = new()
         {
@@ -94,7 +98,8 @@ namespace Voxta.TCode.Model
             FullName = "pitch",
             SpeedPercentage = Tuple.Create(0, 100),
             PositionPercentage = Tuple.Create(10, 90),
-            RangePercentage = Tuple.Create(10, 100)
+            RangePercentage = Tuple.Create(0, 100),
+            RangeDescription = "The range of the {0}. This value rocks toward and away in a rotating motion. It can be a number {1}-{2}. If the range is 0, the device channel will move to the position at the speed and stay until other wise requested."
         };
         public static readonly Channel Suck = new()
         {
@@ -114,7 +119,7 @@ namespace Voxta.TCode.Model
             Name = ChannelName.Vibe1, 
             FullName = "vibrator number 1",
             PositionPercentage = Tuple.Create(0, 100),
-            PositionDescription = "The intensity of the first vibrator. It can be a number {1}-{2}.", 
+            PositionDescription = "The intensity of the first vibrator. It can be a number {1}-{2}. A value less than 30 turns the vibrator off", 
             IsSwitch = true
         };
         public static readonly Channel Vibe2 = new()
@@ -122,7 +127,7 @@ namespace Voxta.TCode.Model
             Name = ChannelName.Vibe2, 
             FullName = "vibrator number 2",
             PositionPercentage = Tuple.Create(0, 100),
-            PositionDescription = "The intensity of the second vibrator. It can be a number {1}-{2}.", 
+            PositionDescription = "The intensity of the second vibrator. It can be a number {1}-{2}. A value less than 30 turns the vibrator off", 
             IsSwitch = true
         };
     }
@@ -175,10 +180,6 @@ namespace Voxta.TCode.Model
                 if(m_rangeDescription.Length == 0)
                     m_rangeDescription = string.Format(ChannelDefault.RangeDescription, FullName, RangePercentage?.Item1 ?? 0, RangePercentage?.Item2 ?? 100);
                 return m_rangeDescription;
-                
-                // if(m_rangeDescription.Length == 0)
-                //     m_rangeDescription = ChannelDefault.RangeDescription;
-                // return string.Format(m_rangeDescription, FullName, RangePercentage?.Item1 ?? 0, RangePercentage?.Item2 ?? 100);
             }
             set 
             { 
@@ -192,10 +193,6 @@ namespace Voxta.TCode.Model
                 if(m_positionDescription.Length == 0)
                     m_positionDescription = string.Format(ChannelDefault.PositionDescription, FullName, PositionPercentage?.Item1 ?? 0, PositionPercentage?.Item2 ?? 100);
                 return m_positionDescription;
-
-                // if(m_positionDescription.Length == 0)
-                //     m_positionDescription = ChannelDefault.PositionDescription;
-                // return string.Format(m_positionDescription, FullName, PositionPercentage?.Item1 ?? 0, PositionPercentage?.Item2 ?? 100);
             }
             set 
             { 
@@ -209,10 +206,6 @@ namespace Voxta.TCode.Model
                 if(m_speedDescription.Length == 0)
                     m_speedDescription = string.Format(ChannelDefault.SpeedDescription, FullName, SpeedPercentage?.Item1 ?? 0, SpeedPercentage?.Item2 ?? 100);
                 return m_speedDescription;
-
-                // if(m_intensityDescription.Length == 0)
-                //     m_intensityDescription = ChannelDefault.IntensityDescription;
-                // return string.Format(ChannelDefault.UseStreaming ?ChannelDefault.IntensityDescriptionStreaming : ChannelDefault.IntensityDescription, FullName, IntensityPercentage?.Item1 ?? 0, IntensityPercentage?.Item2 ?? 100);
             }
             set 
             { 

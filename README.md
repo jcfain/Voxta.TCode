@@ -14,18 +14,20 @@ The settings are as follows:
     "NetworkAddress": "tcode.local",
     "NetworkPort": 8000,
 * DeviceType is the device you will be using. The enum map is as follows.
-    SSR1: 0
-    OSR2: 1
-    OSR6: 2
+    SSR1:  0
+    SSR2:  1
+    OSR2:  2
+    OSR6:  3
+    TVIBE: 4
 * Channel enabled.
-    "(Channel)Enabled": Can disable the channel. Note: if you set the device type to a device that doesnt have the channel, then this has no effect,
+    "(Channel)Enabled": Can disable the channel. IMPORTANT: if you set the device type to a device that doesnt have the channel, then this has no effect,
 * The absolute mins and maximums tailored to your needs. 
     (Only some devices have the Channels. You only need to set the ones you need for your DeviceType specified above)
     "(Channel)Min": 0,
     "(Channel)Max": 9999
 * This will reply in chat if you dont say anything within this timeout in milliseconds -1 to disable
     "AutoReplyDelay": 300000
-* This will control the min and max speed of the channels in milliseconds. ex: MaxInterval: 5000 takes 5 seconds for half an occilation 
+* This will control the min and max speed of the channels in milliseconds. ex: MaxInterval: 5000 takes 5 seconds for half an oscillation 
     "MaxInterval": 2500,
     "MinInterval": 300
 
