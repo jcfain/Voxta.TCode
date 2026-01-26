@@ -20,7 +20,7 @@ The settings are as follows:
     OSR6:  3
     TVIBE: 4
 * Channel enabled.
-    "(Channel)Enabled": Can disable the channel. IMPORTANT: if you set the device type to a device that doesnt have the channel, then this has no effect,
+    "(Channel)Enabled": Can disable the channel. IMPORTANT: if you set the device type to a device that doesnt natively have the channel (ex: OSR2 has no sway), then this has no effect,
 * The absolute mins and maximums tailored to your needs. 
     (Only some devices have the Channels. You only need to set the ones you need for your DeviceType specified above)
     "(Channel)Min": 0,
