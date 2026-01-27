@@ -56,7 +56,7 @@ namespace Voxta.TCode.Model
                 break;
                 case DeviceType.TVIBE:
                 {
-                     ChannelsMap = new();
+                     ChannelsMap = [];
                 }
                 break;
                 default:
@@ -73,8 +73,11 @@ namespace Voxta.TCode.Model
                 }
                 break;
             }
-            ChannelsMap.Add(ChannelID.SuckLevel, ChannelDefault.Suck);
-            ChannelsMap.Add(ChannelID.Lube, ChannelDefault.Lube);
+            if(type != DeviceType.TVIBE)
+            {
+                ChannelsMap.Add(ChannelID.SuckLevel, ChannelDefault.Suck);
+                ChannelsMap.Add(ChannelID.Lube, ChannelDefault.Lube);
+            }
             ChannelsMap.Add(ChannelID.Vibe1, ChannelDefault.Vibe1);
             ChannelsMap.Add(ChannelID.Vibe2, ChannelDefault.Vibe2);
         }
