@@ -39,6 +39,11 @@ namespace Voxta.TCode.Helper
             //ConnectedStateChange += OnConnectionChange; TODO: figure out this warning
         }
 
+        public void Init(ConnectionType conType)
+        {
+            ConnectionChange(conType, currentState);
+        }
+
         public void ConnectionChange(ConnectionType type, ConnectState state)
         {
             var args = new ConnectionEventArgs
@@ -74,39 +79,48 @@ namespace Voxta.TCode.Helper
             return false;
         }
 
-        public void Disconnect()
+        public async Task Disconnect()
         {
-            Disconnect(ConnectionType.Serial);
-            Disconnect(ConnectionType.UDP);
-            Disconnect(ConnectionType.WebSocket);
+            await Disconnect(connectionType);
         }
         
-        public void Disconnect(ConnectionType type)
+        public async Task Disconnect(ConnectionType type)
         {
-            if(currentState != ConnectState.Connected)
+            Logger.LogInformation("ConnectionHandler: Disconnect currentState: {currentState}", currentState);
+            if(currentState == ConnectState.Disconnected
+                || currentState == ConnectState.Disconnecting
+                || currentState == ConnectState.Connecting)
                 return;
             ConnectionChange(type, ConnectState.Disconnecting);
             if(type == ConnectionType.Serial && IsConnected(ConnectionType.Serial))
             {
                 Logger.LogInformation("Serial Disconnect: {port}", address);
                 serial?.Close();
+                serial = null;
+                await Task.Delay(10);
             }
             if(type == ConnectionType.UDP &&  IsConnected(ConnectionType.UDP))
             {
                 Logger.LogInformation("UDP Disconnect: {address}", address);
                 udpClient?.Client.Close();
+                udpClient = null;
+                await Task.Delay(10);
             }
             if(type == ConnectionType.WebSocket &&  IsConnected(ConnectionType.WebSocket))
             {
                 Logger.LogInformation("Websocket Disconnect: {address}",address);
-                webSocketClient?.Disconnect();
+                await webSocketClient?.Disconnect();
+                webSocketClient = null;
             }
             ConnectionChange(type, ConnectState.Disconnected);
         }
 
         public async Task Connect(ConnectionType connectionType, string address, int port = 80)
         {
-            if(currentState != ConnectState.Disconnected)
+            Logger.LogInformation("ConnectionHandler: Connect currentState: {currentState}", currentState);
+            if(currentState == ConnectState.Connected 
+                || currentState == ConnectState.Disconnecting
+                || currentState == ConnectState.Connecting)
                 return;
             if(IsConnected(connectionType))
             {

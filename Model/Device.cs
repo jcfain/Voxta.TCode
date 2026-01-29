@@ -21,6 +21,7 @@ namespace Voxta.TCode.Model
         public const string Stroke = "stroke";
         public const string Stop = "stop";
         public const string Connect = "connect";
+        public const string Disconnect = "disconnect";
         public const string Wait = "wait";
     }
 

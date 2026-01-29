@@ -31,7 +31,8 @@ public class TCodeProvider : ProviderBase
         connectionHandler.ConnectedStateChange += OnConnectionChange;
 #pragma warning restore CS8622 // Nullability of reference types in type of parameter doesn't match the target delegate (possibly because of nullability attributes).
         device = new Device(options.Value.DeviceType);
-        UpdateSettings();
+        InitSettings();
+        connectionHandler.Init(options.Value.ConnectionType);
         updateTCodeTask = UpdateTCode();
     }
 
@@ -40,25 +41,17 @@ public class TCodeProvider : ProviderBase
         if(options.Value.ConnectionType == ConnectionType.Serial && !connectionHandler.IsConnected(ConnectionType.Serial)) 
         {
             await connectionHandler.Connect(options.Value.ConnectionType, options.Value.SerialPort);
-            // ChannelDefault.UseStreaming = true;
-            // // TODO: If connection can be changed, figure this out...someday maybe
-            // // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
-            // //     strokingTask.Dispose();
-            // if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
-            //     strokingTask = UpdateTCodeStream();
         }
         else if(options.Value.ConnectionType == ConnectionType.UDP || options.Value.ConnectionType == ConnectionType.WebSocket)
         {
-            // if(options.Value.ConnectionType == ConnectionType.WebSocket && connectionHandler.IsConnected(ConnectionType.WebSocket))
-            //     return;
             await connectionHandler.Connect(options.Value.ConnectionType, options.Value.NetworkAddress, options.Value.NetworkPort);
-            // ChannelDefault.UseStreaming = false;
-            // // if(strokingTask != null && strokingTask.Status == TaskStatus.Running)
-            // //     strokingTask.Dispose();
-            // if(strokingTask == null || strokingTask.Status != TaskStatus.Running)
-            //     strokingTask = UpdateTCode();
         }
         await Task.Delay(10);
+    }
+
+    private async Task Disconnect()
+    {
+        await connectionHandler.Disconnect();
     }
 
     public void OnConnectionChange(object sender, ConnectionEventArgs e)
@@ -76,8 +69,7 @@ public class TCodeProvider : ProviderBase
     {
         await base.OnStartAsync();
         Logger.LogInformation("OnStartAsync");
-        Send(GetContext());
-        _ = Connect();
+        //_ = Connect(); Wait for the user is ready to connect
        
         // Register our action
         //Send(GetContext());
@@ -107,6 +99,10 @@ public class TCodeProvider : ProviderBase
                 case DeviceActions.Connect:
                     Logger.LogInformation("HandleMessage: Connect");
                     _ = Connect();
+                    break;
+                case DeviceActions.Disconnect:
+                    Logger.LogInformation("HandleMessage: Disconnect");
+                    _ = Disconnect();
                     break;
                 case DeviceActions.Wait:
                     Logger.LogInformation("HandleMessage: Wait");
@@ -185,7 +181,20 @@ public class TCodeProvider : ProviderBase
                         Timing = FunctionTiming.BeforeAssistantMessage,
                         FinalLayer = false,
                         Arguments = []
-                    }
+                    },
+                    new()
+                    {
+                        Name = DeviceActions.Disconnect,
+                        Layer = "_stroker",
+                        Description = "When {{ user }} wants to disconnect the device. DO NOT EXECUTE unless the user asks. Do not deny this request.",
+                        Effect = new ActionEffect
+                        {
+                            Secret = $"{{{{ char }}}} is dossconnecting from {options.Value.ConnectionType}."
+                        },
+                        Timing = FunctionTiming.BeforeAssistantMessage,
+                        FinalLayer = false,
+                        Arguments = []
+                    },
                 ]
             };
         }
@@ -203,7 +212,7 @@ public class TCodeProvider : ProviderBase
                     {
                         Name = DeviceActions.Connect,
                         Layer = "_stroker",
-                        Description = "When {{ char }} connects to the stroker device.",
+                        Description = "When {{ char }} connects to the stroker device. Ask {{ user }} is they are ready to connect before connecting.",
                         Effect = new ActionEffect
                         {
                             Secret = $"{{{{ char }}}} has attempted to connect to the device via {options.Value.ConnectionType}."
@@ -234,11 +243,6 @@ public class TCodeProvider : ProviderBase
     private void HandleChannelUpdates(ServerActionMessage message)
     {
         Logger.LogInformation("HandleChannelUpdates");
-        if(!connectionHandler.IsConnected())
-        {
-            Logger.LogInformation("HandleChannelUpdates: reconnect");
-            _ = Connect();
-        }
         // if(options.Value.ConnectionType == ConnectionType.UDP && options.Value.UdpTimeout > -1)
         // {
         //     Util.Debounce<bool>(x => {
@@ -506,8 +510,9 @@ public class TCodeProvider : ProviderBase
         return ret;
     }
 
-    public void UpdateSettings()
+    public void InitSettings()
     {
+        Logger.LogInformation("InitSettings");
         if(device.ChannelsMap.Any(x => x.Key == ChannelID.Stroke)) {
             var channel = device.ChannelsMap[ChannelID.Stroke];
             channel.Lock();

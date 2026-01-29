@@ -77,11 +77,10 @@ namespace Voxta.TCode.Helper {
             Send(message + '\n');
         }
 
-        public async void Disconnect()
+        public async Task Disconnect()
         {
             ConnectionChange(ConnectState.Disconnecting);
             await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
-            ConnectionChange(ConnectState.Disconnected);
         }
 
         async void Send(string message)
@@ -121,7 +120,6 @@ namespace Voxta.TCode.Helper {
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Receive error: {ex.Message}");
-                    ConnectionChange(ConnectState.Disconnected);
                     break;
                 }
             }
