@@ -62,15 +62,13 @@ public class TCodeProvider : ProviderBase
         await connectionHandler.Disconnect();
     }
 
-    private async Task Reconnect()
-    {
-        await Disconnect();
-        await Connect();
-    }
-
     private async Task ChangeConnection(string name)
     {
-        await Disconnect();
+        bool isConnected = connectionHandler.IsConnected();
+        if(m_selectedDevice.Name == name && isConnected)
+            return;
+        if(isConnected)
+            await Disconnect();
         var selectedDevice = GetUserDevice(name);
         if(selectedDevice == null)
         {
@@ -96,10 +94,6 @@ public class TCodeProvider : ProviderBase
     {
         await base.OnStartAsync();
         Logger.LogInformation("OnStartAsync");
-        //_ = Connect(); Wait for the user is ready to connect
-       
-        // Register our action
-        //Send(GetContext());
 
         // Act when an action is called
         Logger.LogInformation("OnStartAsync : HandleMessage");
@@ -151,129 +145,133 @@ public class TCodeProvider : ProviderBase
     private ClientUpdateContextMessage GetContext()
     { 
         //Logger.LogInformation("GetContext");
-        ClientUpdateContextMessage context;
-        if(connectionHandler.IsConnected())
+        bool isConnected = connectionHandler.IsConnected();
+        var actions = GetConnectedStatusActions(isConnected);
+        string status = "connected.";
+        if(!isConnected)
         {
-            Logger.LogInformation("GetContext: connected");
+            status = "disconnected";
+        }
+        Logger.LogInformation($"GetContext: {status}");
+        return new ClientUpdateContextMessage
+                {
+                    SessionId = SessionId,
+                    ContextKey = "device",
+                    Contexts = [new() { Name=status, Text = $"{{{{ user }}}}'s device is {status}." }],
+                    Actions = [.. actions]
+                };;
+    }
+
+    private List<ScenarioActionDefinition> GetConnectedStatusActions(bool connected)
+    {
+        var actions = new List<ScenarioActionDefinition>();
+        if(connected)
+        {
             var functionDescription = "When {{ char }} wants to physically interact with {{ user }} in a sexual manner.";
             var arguments = BuildChannelArguments(ref functionDescription);
-            context = new ClientUpdateContextMessage
-            {
-                SessionId = SessionId,
-                ContextKey = "device",
-                Contexts = [new() { Text = "{{ user }}'s stroker device is connected." }],
-                Actions = 
-                [
-                    new()
+            actions.AddRange(
+                new()
+                {
+                    // The LLM will use this name to call the action, use a good action name
+                    Name = DeviceActions.Stroke,
+                    // Layers allow you to run your actions separately from the scene
+                    Layer = "_stroker",
+                    // Helps the AI understand when and how to use the function
+                    Description = functionDescription,
+                    // This text will be prepended to the AI's response
+                    Effect = new ActionEffect
                     {
-                        // The LLM will use this name to call the action, use a good action name
-                        Name = DeviceActions.Stroke,
-                        // Layers allow you to run your actions separately from the scene
-                        Layer = "_stroker",
-                        // Helps the AI understand when and how to use the function
-                        Description = functionDescription,
-                        // This text will be prepended to the AI's response
-                        Effect = new ActionEffect
-                        {
-                            Secret = "{{ char }} is physically stimulating {{ user }} in a sexual manner."
-                        },
-                        Timing = FunctionTiming.AfterAssistantMessage,
-                        // Optional arguments for your action
-                        Arguments = [.. arguments]
+                        Secret = "{{ char }} is physically stimulating {{ user }} in a sexual manner."
                     },
-                    new()
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    // Optional arguments for your action
+                    Arguments = [.. arguments]
+                },
+                new()
+                {
+                    Name = DeviceActions.Stop,
+                    Layer = "_stroker",
+                    Description = "When {{ user }} or {{ char }} wants to stop all sexual stimulation.",
+                    Effect = new ActionEffect
                     {
-                        Name = DeviceActions.Stop,
-                        Layer = "_stroker",
-                        Description = "When {{ user }} or {{ char }} wants to stop all sexual stimulation.",
-                        Effect = new ActionEffect
-                        {
-                            Secret = "{{ char }} has stopped physically stimulating {{ user }}."
-                        },
-                        Timing = FunctionTiming.AfterAssistantMessage,
-                        FinalLayer = false,
-                        Arguments =
-                        [
-                            new FunctionArgumentDefinition
-                            {
-                                Name = "speed",
-                                Type = FunctionArgumentType.Integer,
-                                Required = true,
-                                Description = "It can be a number 0."
-                            }
-                        ]
+                        Secret = "{{ char }} has stopped physically stimulating {{ user }}."
                     },
-                    new()
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    FinalLayer = false,
+                    Arguments =
+                    [
+                        new FunctionArgumentDefinition
+                        {
+                            Name = "speed",
+                            Type = FunctionArgumentType.Integer,
+                            Required = true,
+                            Description = "It can be a number 0."
+                        }
+                    ]
+                },
+                new()
+                {
+                    Name = DeviceActions.Wait,
+                    Layer = "_stroker",
+                    Description = "When {{ char }} is waiting to keep the device in the current state.",
+                    Effect = new ActionEffect
                     {
-                        Name = DeviceActions.Wait,
-                        Layer = "_stroker",
-                        Description = "When {{ char }} is waiting to keep the device in the current state.",
-                        Effect = new ActionEffect
-                        {
-                            Secret = $"{{{{ char }}}} is holding the current device state."
-                        },
-                        Timing = FunctionTiming.AfterAssistantMessage,
-                        FinalLayer = false,
-                        Arguments = []
+                        Secret = $"{{{{ char }}}} is holding the current device state."
                     },
-                    new()
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    FinalLayer = false,
+                    Arguments = []
+                },
+                new()
+                {
+                    Name = DeviceActions.Disconnect,
+                    Layer = "_stroker",
+                    Description = "When {{ user }} wants to disconnect the device. DO NOT EXECUTE unless the user asks. Do not deny this request.",
+                    Effect = new ActionEffect
                     {
-                        Name = DeviceActions.Disconnect,
-                        Layer = "_stroker",
-                        Description = "When {{ user }} wants to disconnect the device. DO NOT EXECUTE unless the user asks. Do not deny this request.",
-                        Effect = new ActionEffect
-                        {
-                            Secret = $"{{{{ char }}}} is dissconnecting from {m_selectedDevice.ConnectionType}."
-                        },
-                        Timing = FunctionTiming.AfterAssistantMessage,
-                        FinalLayer = false,
-                        Arguments = []
+                        Secret = $"{{{{ char }}}} is dissconnecting from {m_selectedDevice.ConnectionType}."
                     },
-                ]
-            };
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    FinalLayer = false,
+                    Arguments = []
+                }
+            );
         }
         else
         {
-            Logger.LogInformation("GetContext: disconnected");
-            context = new ClientUpdateContextMessage
-            {
-                SessionId = SessionId,
-                ContextKey = "device",
-                Contexts = [new() { Text = "{{ user }}'s stroker device is disconnected." }],
-                Actions = 
-                [
-                    new()
+            actions.AddRange(
+                new()
+                {
+                    Name = DeviceActions.Connect,
+                    Layer = "_stroker",
+                    Description = "When {{ char }} connects to the stroker device. Ask {{ user }} is they are ready to connect before connecting.",
+                    Effect = new ActionEffect
                     {
-                        Name = DeviceActions.Connect,
-                        Layer = "_stroker",
-                        Description = "When {{ char }} connects to the stroker device. Ask {{ user }} is they are ready to connect before connecting.",
-                        Effect = new ActionEffect
-                        {
-                            Secret = $"{{{{ char }}}} has attempted to connect to the device via {m_selectedDevice.ConnectionType}."
-                        },
-                        Timing = FunctionTiming.AfterAssistantMessage,
-                        FinalLayer = false,
-                        Arguments = []
+                        Secret = $"{{{{ char }}}} has attempted to connect to the device via {m_selectedDevice.ConnectionType}."
                     },
-                    new()
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    FinalLayer = false,
+                    Arguments = []
+                },
+                new()
+                {
+                    Name = DeviceActions.Wait,
+                    Layer = "_stroker",
+                    Description = "When {{ char }} is waiting to connect.",
+                    Effect = new ActionEffect
                     {
-                        Name = DeviceActions.Wait,
-                        Layer = "_stroker",
-                        Description = "When {{ char }} is waiting to connect.",
-                        Effect = new ActionEffect
-                        {
-                            Secret = $"{{{{ char }}}} is waiting."
-                        },
-                        Timing = FunctionTiming.AfterAssistantMessage,
-                        FinalLayer = false,
-                        Arguments = []
-                    }
-                ]
-            };
+                        Secret = $"{{{{ char }}}} is waiting."
+                    },
+                    Timing = FunctionTiming.AfterAssistantMessage,
+                    FinalLayer = false,
+                    Arguments = []
+                }
+            );
         }
+
         foreach(var userDevice in options.Value.Devices)
         {
-            context.Actions.Append(new()
+            actions.Add(new()
             {
                 Name = $"{DeviceActions.Connect}: {userDevice.Name}",
                 Layer = "_stroker",
@@ -288,7 +286,7 @@ public class TCodeProvider : ProviderBase
                 Arguments = []
             });
         }
-        return context;
+        return actions;
     }
 
     private void HandleChannelUpdates(ServerActionMessage message)
