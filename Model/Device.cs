@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using Voxta.TCode.Model;
+
 namespace Voxta.TCode.Model
 {
     public enum ConnectionType

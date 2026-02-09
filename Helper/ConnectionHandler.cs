@@ -109,7 +109,9 @@ namespace Voxta.TCode.Helper
             if(type == ConnectionType.WebSocket &&  IsConnected(ConnectionType.WebSocket))
             {
                 Logger.LogInformation("Websocket Disconnect: {address}",address);
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
                 await webSocketClient?.Disconnect();
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
                 webSocketClient = null;
             }
             ConnectionChange(type, ConnectState.Disconnected);

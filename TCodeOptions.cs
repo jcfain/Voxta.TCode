@@ -7,6 +7,18 @@ namespace Voxta.TCode;
 public class TCodeOptions
 {
     [Required]
+    public required int AutoReplyDelay { get; init; }
+    [Required]
+    public required string SelectedDevice { get; init; }
+    [Required]
+    public required List<UserDevice> Devices { get; init; }
+}
+
+public class UserDevice
+{
+    [Required]
+    public required string Name { get; init; }
+    [Required]
     public required ConnectionType ConnectionType { get; init; }
     [Required]
     public required string SerialPort { get; init; }
@@ -14,8 +26,6 @@ public class TCodeOptions
     public required string NetworkAddress { get; init; }
     [Required]
     public required int NetworkPort { get; init; }
-    [Required]
-    public required int AutoReplyDelay { get; init; }
     [Required]
     public required DeviceType DeviceType { get; init; }
     [Required]
