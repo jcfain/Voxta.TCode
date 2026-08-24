@@ -553,7 +553,7 @@ public class TCodeProvider : ProviderBase
         {
             intervalOut ="I" + speed.ToString();
         }
-        string ret = channel.Name + value.ToString().PadLeft(4, '0') + intervalOut;
+        string ret = channel.Name + value.ToString().PadLeft(4, '0') + intervalOut + "G0";
         
         //channel.Unlock();
         return ret;
