@@ -7,7 +7,6 @@ using Voxta.Model.WebsocketMessages.ServerMessages;
 using Voxta.Providers.Host;
 using Voxta.TCode.Model;
 using Voxta.TCode.Helper;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Voxta.TCode.Providers;
 // This controls a tcode device
@@ -167,7 +166,7 @@ public class TCodeProvider : ProviderBase
         var actions = new List<ScenarioActionDefinition>();
         if(connected)
         {
-            var functionDescription = "When {{ char }} wants to physically interact with {{ user }} in a sexual manner.";
+            var functionDescription = $"When {{{{ char }}}} wants to physically interact with {{{{ user }}}} in a sexual manner. This function controls a stroker device that will physically interact with the {{{{ user }}}}. It will oscillate along linear and/or rotation axis' to pleasure the {{{{ user }}}} sexually.";
             var arguments = BuildChannelArguments(ref functionDescription);
             actions.AddRange(
                 new()
@@ -696,7 +695,7 @@ public class TCodeProvider : ProviderBase
                     Required = true,
                     Description = channel.PositionDescription
                 });
-                // functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.PositionName, channel.PositionDescription, isLast ? "" : " ");
+                functionDescription += string.Format("**Channel Parameter:** '{0}', {1}{2}", channel.PositionName, channel.PositionDescription, isLast ? "" : " ");
                 continue;
             }
 
@@ -722,9 +721,9 @@ public class TCodeProvider : ProviderBase
                 Description = channel.SpeedDescription
             });
 
-            // functionDescription += string.Format("Parameter: '{0}', {1} ", channel.RangeName, channel.RangeDescription);
-            // functionDescription += string.Format("Parameter: '{0}', {1} ", channel.PositionName, channel.PositionDescription);
-            // functionDescription += string.Format("Parameter: '{0}', {1}{2}", channel.SpeedName, channel.SpeedDescription, isLast ? "" : " ");
+            functionDescription += string.Format("**Channel Parameter:**  '{0}', {1} ", channel.RangeName, channel.RangeDescription);
+            functionDescription += string.Format("**Channel Parameter:**  '{0}', {1} ", channel.PositionName, channel.PositionDescription);
+            functionDescription += string.Format("**Channel Parameter:**  '{0}', {1}{2}", channel.SpeedName, channel.SpeedDescription, isLast ? "" : " ");
         }
         return arguments;
     }
